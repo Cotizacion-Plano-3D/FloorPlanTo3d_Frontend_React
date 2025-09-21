@@ -1,19 +1,19 @@
-// src/api/dashboard.js
 import { apiClient } from "./axiosApi";
 
-export const fetchDashboard = async () => {
+export const logoutUser = async () => {
   const token = localStorage.getItem("token");
-  if (!token) throw new Error("No hay token");
 
   try {
-    const response = await apiClient.get("/users/dashboard", {
+    const response = await apiClient.post("/logout", {}, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
+    // Eliminar el token del localStorage
+    localStorage.removeItem("token");
     return response.data;
   } catch (error) {
-    console.error(error);
+    console.error("Error al cerrar sesión:", error);
     throw error;
   }
 };

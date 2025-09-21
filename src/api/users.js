@@ -1,12 +1,11 @@
-// src/api/dashboard.js
 import { apiClient } from "./axiosApi";
 
-export const fetchDashboard = async () => {
+export const fetchUsers = async () => {
   const token = localStorage.getItem("token");
   if (!token) throw new Error("No hay token");
 
   try {
-    const response = await apiClient.get("/users/dashboard", {
+    const response = await apiClient.get("/users", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

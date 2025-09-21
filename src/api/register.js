@@ -1,3 +1,4 @@
+// src/api/register.js
 import { apiClient } from "./axiosApi";
 
 export const registerUser = async (username, password) => {

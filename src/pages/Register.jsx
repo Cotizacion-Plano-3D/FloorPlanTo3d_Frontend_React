@@ -5,14 +5,15 @@ import { registerUser } from "../api/register";
 const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const navigate = useNavigate();
+  const navigate = useNavigate();  // Inicializamos navigate para redirección
 
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
       const data = await registerUser(username, password);
       alert(data.message);
-      navigate("/login");
+      // Redirigir automáticamente al Dashboard después del registro
+      navigate("/users/dashboard");
     } catch (error) {
       alert("Error al registrar usuario");
     }
