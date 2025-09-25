@@ -7,14 +7,14 @@ import '../style/Login.css';
 import Logo from '../assets/arquitectura-3d-mmatt.webp';
 
 const Login = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [correo, setCorreo] = useState("");
+  const [contrasena, setContrasena] = useState("");
   const navigate = useNavigate();  // Inicializamos navigate para redirección
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      await loginUser(username, password);
+  await loginUser(correo, contrasena);
       alert("Login exitoso");
       navigate("/users/dashboard");  // Redirigir al Dashboard después del login
     } catch (error) {
@@ -32,16 +32,16 @@ const Login = () => {
             <input
               type="text"
               className="input-field"
-              placeholder="usuario"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Correo"
+              value={correo}
+              onChange={(e) => setCorreo(e.target.value)}
             />
             <input
               type="password"
               className="input-field"
-              placeholder="contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Contraseña"
+              value={contrasena}
+              onChange={(e) => setContrasena(e.target.value)}
             />
             <div className="forgot-password">
               <a href="#">¿Olvidaste tu contraseña?</a>

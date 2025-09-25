@@ -1,0 +1,72 @@
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(120deg, #e0eafc 0%, #cfdef3 100%);
+}
+
+.register-card {
+  background: #fff;
+  padding: 2.5rem 2rem;
+  border-radius: 1.2rem;
+  box-shadow: 0 8px 32px rgba(60, 60, 120, 0.15);
+  max-width: 400px;
+  width: 100%;
+}
+
+.register-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: #2d3a4a;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.register-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.register-field label {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #4a5a6a;
+}
+
+.register-field input {
+  padding: 0.7rem 1rem;
+  border: 1px solid #dbe2ea;
+  border-radius: 0.6rem;
+  font-size: 1rem;
+  background: #f7fafd;
+  transition: border-color 0.2s;
+}
+
+.register-field input:focus {
+  border-color: #7abaff;
+  outline: none;
+}
+
+.register-btn {
+  padding: 0.9rem 0;
+  background: linear-gradient(90deg, #7abaff 0%, #4e91f9 100%);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.7rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(60, 60, 120, 0.08);
+  transition: background 0.2s;
+}
+
+.register-btn:hover {
+  background: linear-gradient(90deg, #4e91f9 0%, #7abaff 100%);
+}

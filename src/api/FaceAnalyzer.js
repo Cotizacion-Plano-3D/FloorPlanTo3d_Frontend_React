@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { API_URL } from "./config";
 
 const FaceAnalyzer = () => {
   const [file, setFile] = useState(null);
@@ -19,7 +20,7 @@ const FaceAnalyzer = () => {
 
     setLoading(true);
     try {
-      const response = await axios.post("http://127.0.0.1:8000/analyze", formData, {
+  const response = await axios.post(`${API_URL}/analyze`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setResult(response.data);

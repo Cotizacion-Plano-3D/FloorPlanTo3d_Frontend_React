@@ -10,14 +10,18 @@ const UsersList = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log("UsersList: Iniciando carga de usuarios...");
     const getUsers = async () => {
       try {
         const data = await fetchUsers();
-        setUsers(Array.isArray(data?.users) ? data.users : []);
+        console.log("UsersList: Datos recibidos:", data);
+  setUsers(Array.isArray(data?.usuarios) ? data.usuarios : []);
       } catch (err) {
+        console.error("UsersList: Error al cargar usuarios:", err);
         setError("No se pudieron cargar los usuarios.");
       } finally {
         setLoading(false);
+        console.log("UsersList: Carga finalizada.");
       }
     };
     getUsers();
@@ -51,14 +55,18 @@ const UsersList = () => {
                   <thead>
                     <tr className="text-left border-b">
                       <th className="py-2 pr-4">ID</th>
-                      <th className="py-2 pr-4">Usuario</th>
+                      <th className="py-2 pr-4">Correo</th>
+                      <th className="py-2 pr-4">Nombre</th>
+                      <th className="py-2 pr-4">Fecha de creación</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((u) => (
                       <tr key={u.id} className="border-b last:border-b-0">
                         <td className="py-2 pr-4">{u.id}</td>
-                        <td className="py-2 pr-4">{u.username}</td>
+                        <td className="py-2 pr-4">{u.correo}</td>
+                        <td className="py-2 pr-4">{u.nombre}</td>
+                        <td className="py-2 pr-4">{u.fecha_creacion}</td>
                       </tr>
                     ))}
                   </tbody>

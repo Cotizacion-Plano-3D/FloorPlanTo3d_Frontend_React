@@ -1,0 +1,108 @@
+.landing-container {
+  min-height: 100vh;
+  background: #f7f9fb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.landing-header {
+  margin-top: 40px;
+  text-align: center;
+}
+.landing-header h1 {
+  font-size: 2.5rem;
+  color: #0a3d62;
+  margin-bottom: 0.5rem;
+}
+.landing-header p {
+  font-size: 1.2rem;
+  color: #34495e;
+  margin-bottom: 2rem;
+}
+
+.plans-section {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto 2rem auto;
+}
+.plans-section h2 {
+  text-align: center;
+  font-size: 2rem;
+  color: #0a3d62;
+  margin-bottom: 1.5rem;
+}
+.plans-list {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.plan-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 2rem 1.5rem;
+  min-width: 250px;
+  max-width: 300px;
+  text-align: center;
+  transition: box-shadow 0.2s;
+}
+.plan-card:hover {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+.plan-card h3 {
+  font-size: 1.4rem;
+  color: #2980b9;
+  margin-bottom: 1rem;
+}
+.plan-card ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 1.5rem;
+}
+.plan-card li {
+  font-size: 1rem;
+  color: #34495e;
+  margin-bottom: 0.5rem;
+}
+.plan-card button {
+  background: #2980b9;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.plan-card button:hover {
+  background: #0a3d62;
+}
+
+.landing-footer {
+  width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  background: #0a3d62;
+  padding: 1rem 0;
+  text-align: center;
+}
+.login-btn {
+  background: #fff;
+  color: #0a3d62;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 2rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: background 0.2s, color 0.2s;
+}
+.login-btn:hover {
+  background: #2980b9;
+  color: #fff;
+}

@@ -10,7 +10,15 @@ export const fetchUsers = async () => {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data;
+      // Adaptar los datos al nuevo modelo Usuario
+      return {
+        usuarios: response.data.users.map(u => ({
+          id: u.id,
+          correo: u.correo,
+          nombre: u.nombre,
+          fecha_creacion: u.fecha_creacion
+        }))
+      };
   } catch (error) {
     console.error(error);
     throw error;
