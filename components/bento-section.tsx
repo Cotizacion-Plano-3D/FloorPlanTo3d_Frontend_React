@@ -36,33 +36,33 @@ const BentoCard = ({ title, description, Component }) => (
 export function BentoSection() {
   const cards = [
     {
-      title: "Análisis de planos con IA.",
-      description: "Obtén análisis inteligentes y sugerencias en tiempo real para tus planos arquitectónicos.",
+      title: "Análisis inteligente de planos.",
+      description: "IA avanzada que detecta errores, optimiza espacios y sugiere mejoras en tus planos arquitectónicos.",
       Component: AiCodeReviews,
     },
     {
-      title: "Vista previa en tiempo real",
-      description: "Colabora y visualiza cambios instantáneamente en tus modelos 3D.",
+      title: "Vista previa 3D en tiempo real",
+      description: "Visualiza tus planos convertidos a modelos 3D instantáneamente mientras trabajas.",
       Component: RealtimeCodingPreviews,
     },
     {
-      title: "Integraciones con un clic",
-      description: "Conecta fácilmente tu flujo de trabajo con herramientas de diseño populares.",
+      title: "Integración con herramientas CAD",
+      description: "Conecta directamente con AutoCAD, Revit, SketchUp y otras herramientas profesionales.",
       Component: OneClickIntegrationsIllustration,
     },
     {
-      title: "Conectividad flexible",
-      description: "Gestiona y configura el acceso a servidores de manera sencilla.",
+      title: "Procesamiento en la nube",
+      description: "Renderizado potente en servidores cloud para modelos 3D complejos sin límites de hardware.",
       Component: MCPConnectivityIllustration,
     },
     {
-      title: "Agentes de procesamiento paralelo",
-      description: "Resuelve problemas complejos más rápido con múltiples agentes de IA.",
+      title: "Renderizado paralelo avanzado",
+      description: "Genera múltiples vistas y renders simultáneamente para acelerar tu flujo de trabajo.",
       Component: ParallelCodingAgents,
     },
     {
-      title: "Despliegue simplificado",
-      description: "Ve desde el plano hasta el modelo 3D desplegado instantáneamente.",
+      title: "Exportación multi-formato",
+      description: "Exporta a OBJ, FBX, STL, PDF y más formatos con un solo clic.",
       Component: EasyDeployment,
     },
   ]
@@ -74,11 +74,11 @@ export function BentoSection() {
         <div className="self-stretch py-8 md:py-14 flex flex-col justify-center items-center gap-2 z-10">
           <div className="flex flex-col justify-start items-center gap-4">
             <h2 className="w-full max-w-[655px] text-center text-foreground text-4xl md:text-6xl font-semibold leading-tight md:leading-[66px]">
-              Potencia tu Flujo de Trabajo con IA
+              Transforma Planos Arquitectónicos con IA
             </h2>
             <p className="w-full max-w-[600px] text-center text-muted-foreground text-lg md:text-xl font-medium leading-relaxed">
-              Utiliza tu Agente de IA para colaboración en tiempo real, integraciones perfectas y perspectivas accionables para
-              optimizar tus operaciones.
+              Convierte tus planos 2D en modelos 3D detallados utilizando inteligencia artificial avanzada, 
+              herramientas profesionales y procesamiento en la nube para arquitectos y diseñadores.
             </p>
           </div>
         </div>

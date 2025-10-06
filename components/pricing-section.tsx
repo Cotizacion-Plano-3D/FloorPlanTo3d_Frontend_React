@@ -3,22 +3,36 @@
 import { useState } from "react"
 import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/AuthContext"
+import { AuthModal } from "@/components/auth/AuthModal"
 
 export function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(true)
+  const { isAuthenticated } = useAuth()
+  const [showAuthModal, setShowAuthModal] = useState(false)
+
+  const handlePlanSelect = (planName: string) => {
+    if (isAuthenticated) {
+      // Si está autenticado, redirigir al dashboard
+      window.location.href = '/dashboard'
+    } else {
+      // Si no está autenticado, mostrar modal de registro
+      setShowAuthModal(true)
+    }
+  }
 
   const pricingPlans = [
     {
       name: "Gratis",
       monthlyPrice: "$0",
       annualPrice: "$0",
-      description: "Perfecto para individuos que comienzan su viaje.",
+      description: "Perfecto para estudiantes y arquitectos independientes.",
       features: [
-        "Sugerencias de planos en tiempo real",
-        "Logos de integración básicos",
-        "Conexión a un servidor",
-        "Hasta 2 agentes de IA",
-        "Despliegues con marca FloorPlan3D",
+        "Análisis básico de planos 2D",
+        "Integración con AutoCAD y SketchUp",
+        "Procesamiento en la nube limitado",
+        "Hasta 2 renders simultáneos",
+        "Exportación a PDF y OBJ",
       ],
       buttonText: "Comenzar",
       buttonClass:
@@ -28,15 +42,15 @@ export function PricingSection() {
       name: "Pro",
       monthlyPrice: "$20",
       annualPrice: "$16",
-      description: "Ideal para profesionales.",
+      description: "Ideal para estudios de arquitectura profesionales.",
       features: [
-        "Vistas previas mejoradas en tiempo real",
-        "Integraciones ilimitadas con logos personalizados",
-        "Múltiples conexiones de servidor",
-        "Hasta 10 agentes de IA concurrentes",
-        "Colaboración con chat de equipo",
-        "Integraciones avanzadas de control de versiones",
-        "Soporte prioritario por email y chat",
+        "Análisis avanzado de planos con IA",
+        "Integración completa con Revit, ArchiCAD",
+        "Procesamiento ilimitado en la nube",
+        "Hasta 10 renders simultáneos",
+        "Colaboración en tiempo real con equipos",
+        "Exportación a todos los formatos profesionales",
+        "Soporte prioritario especializado",
       ],
       buttonText: "Únete ahora",
       buttonClass:
@@ -47,13 +61,14 @@ export function PricingSection() {
       name: "Ultra",
       monthlyPrice: "$200",
       annualPrice: "$160",
-      description: "Soluciones personalizadas para equipos.",
+      description: "Soluciones empresariales para grandes firmas.",
       features: [
-        "Soporte de cuenta dedicado",
-        "Clusters de servidor ilimitados",
-        "Agentes de IA ilimitados",
-        "Seguridad y cumplimiento de nivel empresarial",
-        "Despliegues prioritarios y garantías SLA",
+        "Soporte dedicado de arquitectos especialistas",
+        "Procesamiento en servidores dedicados",
+        "Renders ilimitados y sin restricciones",
+        "Seguridad y cumplimiento empresarial",
+        "Integración con sistemas BIM corporativos",
+        "Despliegue local y en la nube",
       ],
       buttonText: "Hablar con Ventas",
       buttonClass:
@@ -66,11 +81,11 @@ export function PricingSection() {
       <div className="self-stretch relative flex flex-col justify-center items-center gap-2 py-0">
         <div className="flex flex-col justify-start items-center gap-4">
           <h2 className="text-center text-foreground text-4xl md:text-5xl font-semibold leading-tight md:leading-[40px]">
-            Precios diseñados para cada desarrollador
+            Precios diseñados para arquitectos y diseñadores
           </h2>
           <p className="self-stretch text-center text-muted-foreground text-sm font-medium leading-tight">
-            Elige un plan que se adapte a tu flujo de trabajo, desde individuos que comienzan hasta <br /> profesionales en crecimiento
-            y grandes organizaciones.
+            Elige un plan que se adapte a tu práctica profesional, desde estudiantes hasta <br /> estudios de arquitectura
+            y grandes firmas de diseño.
           </p>
         </div>
         <div className="pt-4">
@@ -162,11 +177,12 @@ export function PricingSection() {
                 </div>
               </div>
               <Button
+                onClick={() => handlePlanSelect(plan.name)}
                 className={`self-stretch px-5 py-2 rounded-[40px] flex justify-center items-center ${plan.buttonClass}`}
               >
                 <div className="px-1.5 flex justify-center items-center gap-2">
                   <span
-                    className={`text-center text-sm font-medium leading-tight ${plan.name === "Free" ? "text-gray-800" : plan.name === "Pro" ? "text-primary" : "text-zinc-950"}`}
+                    className={`text-center text-sm font-medium leading-tight ${plan.name === "Gratis" ? "text-gray-800" : plan.name === "Pro" ? "text-primary" : "text-zinc-950"}`}
                   >
                     {plan.buttonText}
                   </span>
@@ -200,6 +216,10 @@ export function PricingSection() {
           </div>
         ))}
       </div>
+      
+      {showAuthModal && (
+        <AuthModal onClose={() => setShowAuthModal(false)} />
+      )}
     </section>
   )
 }

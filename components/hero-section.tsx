@@ -1,14 +1,32 @@
+'use client'
+
 import React from "react"
 import { Button } from "@/components/ui/button"
 import { Header } from "./header"
-import Link from "next/link"
+import { useAuth } from "@/contexts/AuthContext"
+import { useState } from "react"
+import { AuthModal } from "@/components/auth/AuthModal"
 
 export function HeroSection() {
+  const { isAuthenticated } = useAuth()
+  const [showAuthModal, setShowAuthModal] = useState(false)
+
+  const handleGetStarted = () => {
+    if (isAuthenticated) {
+      // Si está autenticado, redirigir al dashboard
+      window.location.href = '/dashboard'
+    } else {
+      // Si no está autenticado, mostrar modal de registro
+      setShowAuthModal(true)
+    }
+  }
+
   return (
-    <section
-      className="flex flex-col items-center text-center relative mx-auto rounded-2xl overflow-hidden my-6 py-0 px-4
-         w-full h-[400px] md:w-[1220px] md:h-[600px] lg:h-[810px] md:px-0"
-    >
+    <>
+      <section
+        className="flex flex-col items-center text-center relative mx-auto rounded-2xl overflow-hidden my-6 py-0 px-4
+           w-full h-[400px] md:w-[1220px] md:h-[600px] lg:h-[810px] md:px-0"
+      >
       {/* SVG Background */}
       <div className="absolute inset-0 z-0">
         <svg
@@ -442,15 +460,22 @@ export function HeroSection() {
           Convierte Planos en Modelos 3D con IA
         </h1>
         <p className="text-muted-foreground text-base md:text-base lg:text-lg font-medium leading-relaxed max-w-lg mx-auto">
-          Transforma tus planos arquitectónicos en modelos 3D detallados utilizando inteligencia artificial avanzada.
+          Transforma tus planos arquitectónicos en modelos 3D detallados utilizando inteligencia artificial avanzada. 
+          Diseñado específicamente para arquitectos, diseñadores y constructores profesionales.
         </p>
       </div>
 
-      <Link href="https://vercel.com/home" target="_blank" rel="noopener noreferrer">
-        <Button className="relative z-10 bg-secondary text-secondary-foreground hover:bg-secondary/90 px-8 py-3 rounded-full font-medium text-base shadow-lg ring-1 ring-white/10">
-          Regístrate gratis
+        <Button 
+          onClick={handleGetStarted}
+          className="relative z-10 bg-secondary text-secondary-foreground hover:bg-secondary/90 px-8 py-3 rounded-full font-medium text-base shadow-lg ring-1 ring-white/10"
+        >
+          {isAuthenticated ? 'Ir al Dashboard' : 'Regístrate gratis'}
         </Button>
-      </Link>
-    </section>
+      </section>
+      
+      {showAuthModal && (
+        <AuthModal onClose={() => setShowAuthModal(false)} />
+      )}
+    </>
   )
 }

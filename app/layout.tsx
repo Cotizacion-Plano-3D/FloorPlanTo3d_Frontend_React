@@ -2,12 +2,15 @@ import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
+import { AuthProvider } from '@/contexts/AuthContext'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'FloorPlan3D - Convierte Planos en Modelos 3D',
+  description: 'Transforma tus planos arquitectónicos en modelos 3D detallados utilizando inteligencia artificial avanzada.',
+  keywords: 'arquitectura, planos, 3D, IA, diseño, construcción',
+  authors: [{ name: 'FloorPlan3D Team' }],
+  viewport: 'width=device-width, initial-scale=1',
 }
 
 export default function RootLayout({
@@ -16,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <head>
         <style>{`
 html {
@@ -27,7 +30,9 @@ html {
         `}</style>
       </head>
       <body>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         <Analytics />
       </body>
     </html>
