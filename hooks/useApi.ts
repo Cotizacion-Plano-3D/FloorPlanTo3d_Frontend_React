@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '@/lib/api'
 import { Membresia, Suscripcion, Pago, Usuario } from '@/types/api'
 
@@ -8,7 +8,7 @@ export function useMembresias() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchMembresias = async () => {
+  const fetchMembresias = useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
@@ -19,7 +19,7 @@ export function useMembresias() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   const createMembresia = async (membresia: Omit<Membresia, 'id'>) => {
     try {
@@ -68,75 +68,28 @@ export function useMembresias() {
   }
 }
 
-// Hook para manejar suscripciones con datos mock y control de estado
+// Hook para manejar suscripciones
 export function useSuscripciones() {
   const [suscripciones, setSuscripciones] = useState<Suscripcion[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mockMode, setMockMode] = useState<'with_subscription' | 'without_subscription'>('with_subscription')
 
-  // Datos mock para testing - CON suscripción activa
-  const mockSuscripcionesWith: Suscripcion[] = [
-    {
-      id: 1,
-      usuario_id: 1,
-      membresia_id: 2,
-      fecha_inicio: new Date().toISOString(),
-      fecha_fin: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 días desde ahora
-      estado: 'activa',
-      membresia: {
-        id: 2,
-        nombre: 'Pro',
-        precio: 20,
-        duracion: 30,
-        descripcion: 'Plan profesional para estudios de arquitectura'
-      }
-    }
-  ]
-
-  // Datos mock para testing - SIN suscripción activa
-  const mockSuscripcionesWithout: Suscripcion[] = [
-    {
-      id: 1,
-      usuario_id: 1,
-      membresia_id: 1,
-      fecha_inicio: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 días atrás
-      fecha_fin: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 días atrás (expirada)
-      estado: 'expirada',
-      membresia: {
-        id: 1,
-        nombre: 'Gratis',
-        precio: 0,
-        duracion: 30,
-        descripcion: 'Plan gratuito básico'
-      }
-    }
-  ]
-
-  const fetchSuscripciones = async () => {
+  const fetchSuscripciones = useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
       
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Usar datos mock según el modo
-      if (mockMode === 'with_subscription') {
-        setSuscripciones(mockSuscripcionesWith)
-      } else {
-        setSuscripciones(mockSuscripcionesWithout)
-      }
-      
-      // Descomentar cuando la API esté lista:
-      // const data = await apiClient.getSuscripciones()
-      // setSuscripciones(data)
+      // Usar la API real en lugar de datos mock
+      const data = await apiClient.getSuscripciones()
+      setSuscripciones(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar suscripciones')
+      // Si falla la API, usar array vacío en lugar de datos mock
+      setSuscripciones([])
     } finally {
       setIsLoading(false)
     }
-  }
+  }, []) // Dependencias vacías para evitar recreación
 
   const createSuscripcion = async (suscripcion: Omit<Suscripcion, 'id'>) => {
     try {
@@ -170,14 +123,9 @@ export function useSuscripciones() {
     }
   }
 
-  // Función para cambiar el modo mock (para testing)
-  const toggleMockMode = () => {
-    setMockMode(prev => prev === 'with_subscription' ? 'without_subscription' : 'with_subscription')
-  }
-
   useEffect(() => {
     fetchSuscripciones()
-  }, [mockMode])
+  }, [])
 
   return {
     suscripciones,
@@ -186,9 +134,7 @@ export function useSuscripciones() {
     fetchSuscripciones,
     createSuscripcion,
     updateSuscripcion,
-    deleteSuscripcion,
-    toggleMockMode, // Para testing
-    mockMode // Para mostrar el estado actual
+    deleteSuscripcion
   }
 }
 
@@ -198,7 +144,7 @@ export function usePagos() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchPagos = async () => {
+  const fetchPagos = useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
@@ -209,7 +155,7 @@ export function usePagos() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   const createPago = async (pago: Omit<Pago, 'id'>) => {
     try {
@@ -254,16 +200,16 @@ export function useUsers() {
     }
   }
 
-  const updateUser = async (id: number, userData: Partial<Usuario>) => {
-    try {
-      const updatedUser = await apiClient.updateUser(id, userData)
-      setUsers(prev => prev.map(u => u.id === id ? updatedUser : u))
-      return updatedUser
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al actualizar usuario')
-      throw err
-    }
-  }
+  // const updateUser = async (id: number, userData: Partial<Usuario>) => {
+  //   try {
+  //     const updatedUser = await apiClient.updateUser(id, userData)
+  //     setUsers(prev => prev.map(u => u.id === id ? updatedUser : u))
+  //     return updatedUser
+  //   } catch (err) {
+  //     setError(err instanceof Error ? err.message : 'Error al actualizar usuario')
+  //     throw err
+  //   }
+  // }
 
   const deleteUser = async (id: number) => {
     try {
@@ -284,7 +230,43 @@ export function useUsers() {
     isLoading,
     error,
     fetchUsers,
-    updateUser,
+    // updateUser,
     deleteUser
+  }
+}
+
+// Hook para verificar suscripción activa
+export function useActiveSubscription(userId?: number) {
+  const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const checkActiveSubscription = async (id: number) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const isActive = await apiClient.checkActiveSubscription(id)
+      setHasActiveSubscription(isActive)
+      return isActive
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al verificar suscripción')
+      setHasActiveSubscription(false)
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (userId) {
+      checkActiveSubscription(userId)
+    }
+  }, [userId])
+
+  return {
+    hasActiveSubscription,
+    isLoading,
+    error,
+    checkActiveSubscription
   }
 }

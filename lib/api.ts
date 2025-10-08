@@ -20,21 +20,42 @@ class ApiClient {
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL
-    // Cargar token del localStorage si existe
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('auth_token')
-    }
+    // NO cargar token automáticamente - se manejará desde AuthContext
+    console.log('🔧 ApiClient constructor - NO cargando token automáticamente')
   }
 
   setToken(token: string | null) {
     this.token = token
+    console.log('🔧 API Client - setToken:', {
+      hasToken: !!token,
+      tokenLength: token?.length || 0
+    })
+    
     if (typeof window !== 'undefined') {
       if (token) {
         localStorage.setItem('auth_token', token)
+        console.log('💾 Token guardado en localStorage')
       } else {
         localStorage.removeItem('auth_token')
+        console.log('🗑️ Token eliminado de localStorage')
       }
     }
+  }
+
+  // Método para inicializar el token desde localStorage (solo desde AuthContext)
+  initializeFromStorage() {
+    if (typeof window !== 'undefined') {
+      const savedToken = localStorage.getItem('auth_token')
+      if (savedToken) {
+        this.token = savedToken
+        console.log('🔄 Token inicializado desde localStorage:', {
+          hasToken: !!savedToken,
+          tokenLength: savedToken.length
+        })
+        return savedToken
+      }
+    }
+    return null
   }
 
   private async request<T>(
@@ -52,72 +73,86 @@ class ApiClient {
       ...options,
     }
 
+    console.log('🌐 API Request:', {
+      url,
+      hasToken: !!this.token,
+      method: options.method || 'GET'
+    })
+
     try {
       const response = await fetch(url, config)
       
       if (!response.ok) {
         const errorData: ApiError = await response.json()
+        console.error('❌ API Error:', {
+          status: response.status,
+          error: errorData.detail
+        })
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
       }
       
+      console.log('✅ API Response OK:', url)
       return await response.json()
     } catch (error) {
-      console.error('API request failed:', error)
+      console.error('❌ API request failed:', error)
       throw error
     }
   }
 
   // Authentication endpoints
   async login(credentials: LoginRequest): Promise<AuthResponse> {
-    return this.request<AuthResponse>('/login', {
+    return this.request<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     })
   }
 
   async register(userData: RegisterRequest): Promise<{ message: string }> {
-    return this.request<{ message: string }>('/register', {
+    return this.request<{ message: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     })
   }
 
   async logout(): Promise<void> {
-    await this.request('/logout', {
-      method: 'POST',
-    })
+    // No hay endpoint de logout en el backend, solo limpiar token local
     this.setToken(null)
   }
 
   async getDashboard(): Promise<DashboardResponse> {
-    return this.request<DashboardResponse>('/users/dashboard')
+    return this.request<DashboardResponse>('/dashboard/')
   }
 
   // User endpoints
   async getUsers(): Promise<Usuario[]> {
-    return this.request<Usuario[]>('/users')
+    return this.request<Usuario[]>('/users/')
   }
 
-  async getUser(id: number): Promise<Usuario> {
-    return this.request<Usuario>(`/users/${id}`)
+  async getCurrentUser(): Promise<Usuario> {
+    return this.request<Usuario>('/users/me')
   }
 
-  async updateUser(id: number, userData: Partial<Usuario>): Promise<Usuario> {
-    return this.request<Usuario>(`/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(userData),
-    })
-  }
-
-  async deleteUser(id: number): Promise<void> {
-    await this.request(`/users/${id}`, {
+  async deleteUser(id: number): Promise<{ detail: string }> {
+    return this.request<{ detail: string }>(`/users/${id}`, {
       method: 'DELETE',
     })
   }
 
+  // Nota: Los endpoints de get/update de usuarios específicos no existen en el backend
+  // async getUser(id: number): Promise<Usuario> {
+  //   return this.request<Usuario>(`/users/${id}`)
+  // }
+
+  // async updateUser(id: number, userData: Partial<Usuario>): Promise<Usuario> {
+  //   return this.request<Usuario>(`/users/${id}`, {
+  //     method: 'PUT',
+  //     body: JSON.stringify(userData),
+  //   })
+  // }
+
   // Membresia endpoints
   async getMembresias(): Promise<Membresia[]> {
-    return this.request<Membresia[]>('/membresias')
+    return this.request<Membresia[]>('/membresias/')
   }
 
   async getMembresia(id: number): Promise<Membresia> {
@@ -125,7 +160,7 @@ class ApiClient {
   }
 
   async createMembresia(membresia: Omit<Membresia, 'id'>): Promise<Membresia> {
-    return this.request<Membresia>('/membresias', {
+    return this.request<Membresia>('/membresias/', {
       method: 'POST',
       body: JSON.stringify(membresia),
     })
@@ -146,7 +181,7 @@ class ApiClient {
 
   // Suscripcion endpoints
   async getSuscripciones(): Promise<Suscripcion[]> {
-    return this.request<Suscripcion[]>('/suscripciones')
+    return this.request<Suscripcion[]>('/suscripciones/')
   }
 
   async getSuscripcion(id: number): Promise<Suscripcion> {
@@ -154,7 +189,7 @@ class ApiClient {
   }
 
   async createSuscripcion(suscripcion: Omit<Suscripcion, 'id'>): Promise<Suscripcion> {
-    return this.request<Suscripcion>('/suscripciones', {
+    return this.request<Suscripcion>('/suscripciones/', {
       method: 'POST',
       body: JSON.stringify(suscripcion),
     })
@@ -173,9 +208,18 @@ class ApiClient {
     })
   }
 
+  async checkActiveSubscription(userId: number): Promise<boolean> {
+    const response = await this.request<{
+      usuario_id: number;
+      tiene_suscripcion_activa: boolean;
+      mensaje: string;
+    }>(`/suscripciones/activa/${userId}`)
+    return response.tiene_suscripcion_activa
+  }
+
   // Pago endpoints
   async getPagos(): Promise<Pago[]> {
-    return this.request<Pago[]>('/pagos')
+    return this.request<Pago[]>('/pagos/')
   }
 
   async getPago(id: number): Promise<Pago> {
@@ -183,7 +227,7 @@ class ApiClient {
   }
 
   async createPago(pago: Omit<Pago, 'id'>): Promise<Pago> {
-    return this.request<Pago>('/pagos', {
+    return this.request<Pago>('/pagos/', {
       method: 'POST',
       body: JSON.stringify(pago),
     })

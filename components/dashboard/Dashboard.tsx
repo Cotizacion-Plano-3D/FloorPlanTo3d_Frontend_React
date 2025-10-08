@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useMembresias, useSuscripciones, usePagos } from '@/hooks/useApi'
+import { SessionDebugger } from '@/components/SessionDebugger'
+import { ApiClientDebugger } from '@/components/ApiClientDebugger'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +26,8 @@ import {
   FileText,
   ArrowRight,
   Crown,
-  Star
+  Star,
+  Check
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -80,7 +83,6 @@ const MEMBRESIA_FEATURES = {
 // Componente para usuarios SIN suscripción activa
 function NoSubscriptionDashboard() {
   const { user, logout } = useAuth()
-  const { suscripciones } = useSuscripciones()
 
   const handleLogout = async () => {
     try {
@@ -122,23 +124,24 @@ function NoSubscriptionDashboard() {
       {/* Main Content */}
       <main className="container py-6">
         <div className="space-y-8">
+          
           {/* Estado de suscripción */}
-          <Card className="border-orange-200 bg-orange-50/50">
+          <Card className="border-orange-500/20 bg-gradient-to-r from-orange-900/20 to-red-900/20 backdrop-blur-sm">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-orange-600" />
-                <CardTitle className="text-orange-800">Suscripción Requerida</CardTitle>
+                <Crown className="h-5 w-5 text-orange-400" />
+                <CardTitle className="text-orange-300">Suscripción Requerida</CardTitle>
               </div>
-              <CardDescription className="text-orange-700">
+              <CardDescription className="text-orange-200/80">
                 Para acceder a todas las funcionalidades de FloorPlan3D, necesitas una suscripción activa.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4">
-                <Badge variant="outline" className="border-orange-300 text-orange-700">
+                <Badge variant="outline" className="border-orange-400/30 text-orange-300 bg-orange-900/20">
                   Sin Suscripción Activa
                 </Badge>
-                <Button onClick={scrollToPricing} className="bg-orange-600 hover:bg-orange-700">
+                <Button onClick={scrollToPricing} className="bg-orange-600 hover:bg-orange-700 text-white">
                   <Star className="mr-2 h-4 w-4" />
                   Ver Planes Disponibles
                 </Button>
@@ -146,45 +149,16 @@ function NoSubscriptionDashboard() {
             </CardContent>
           </Card>
 
-          {/* Funcionalidades limitadas */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Funcionalidades Disponibles (Plan Gratuito)</CardTitle>
-              <CardDescription>
-                Estas son las funciones que puedes usar sin suscripción
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {MEMBRESIA_FEATURES['Gratis'].features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 rounded-lg border">
-                    <feature.icon className="h-5 w-5 text-green-600" />
-                    <span className="text-sm font-medium">{feature.name}</span>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-6 p-4 bg-muted rounded-lg">
-                <h4 className="font-medium mb-2">Límites del Plan Gratuito:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Subidas por mes: {MEMBRESIA_FEATURES['Gratis'].limits.uploadsPerMonth}</li>
-                  <li>• Renders por mes: {MEMBRESIA_FEATURES['Gratis'].limits.rendersPerMonth}</li>
-                  <li>• Tamaño máximo de archivo: {MEMBRESIA_FEATURES['Gratis'].limits.maxFileSize}</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Call to Action */}
-          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+          <Card className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-500/20 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-blue-800">¿Listo para más?</CardTitle>
-              <CardDescription className="text-blue-700">
+              <CardTitle className="text-blue-300">¿Listo para más?</CardTitle>
+              <CardDescription className="text-blue-200/80">
                 Desbloquea todas las funcionalidades profesionales con nuestros planes de suscripción
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={scrollToPricing} size="lg" className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={scrollToPricing} size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
                 <ArrowRight className="mr-2 h-4 w-4" />
                 Explorar Planes
               </Button>
@@ -203,10 +177,17 @@ function NoSubscriptionDashboard() {
 
 // Componente para usuarios CON suscripción activa
 function ActiveSubscriptionDashboard() {
-  const { user, logout, isLoading: authLoading } = useAuth()
+  const { user, logout } = useAuth()
   const { membresias, isLoading: membresiasLoading } = useMembresias()
-  const { suscripciones, isLoading: suscripcionesLoading } = useSuscripciones()
+  const { suscripciones, isLoading: suscripcionesLoading, fetchSuscripciones } = useSuscripciones()
   const { pagos, isLoading: pagosLoading } = usePagos()
+
+  // Refrescar datos cuando el usuario cambie
+  useEffect(() => {
+    if (user?.id) {
+      fetchSuscripciones()
+    }
+  }, [user?.id]) // Removido fetchSuscripciones de las dependencias
 
   const handleLogout = async () => {
     try {
@@ -220,14 +201,6 @@ function ActiveSubscriptionDashboard() {
   const activeSubscription = suscripciones.find(sub => sub.estado === 'activa')
   const userMembresia = activeSubscription?.membresia?.nombre || 'Pro'
   const membresiaFeatures = MEMBRESIA_FEATURES[userMembresia as keyof typeof MEMBRESIA_FEATURES] || MEMBRESIA_FEATURES['Pro']
-
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -254,6 +227,7 @@ function ActiveSubscriptionDashboard() {
       {/* Main Content */}
       <main className="container py-6">
         <div className="space-y-6">
+
           {/* Estado de suscripción */}
           <Card className="border-green-200 bg-green-50/50">
             <CardHeader>
@@ -549,13 +523,37 @@ function ActiveSubscriptionDashboard() {
 
 // Componente principal del Dashboard
 export function Dashboard() {
-  const { user, isLoading: authLoading } = useAuth()
-  const { suscripciones, isLoading: suscripcionesLoading, toggleMockMode, mockMode } = useSuscripciones()
+  const { user, isLoading: authLoading, hasActiveSubscription, checkSubscription } = useAuth()
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
 
-  // Determinar si el usuario tiene una suscripción activa
-  const hasActiveSubscription = suscripciones.some(sub => sub.estado === 'activa')
+  // Manejar parámetros de URL para pagos
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const success = urlParams.get('success')
+    const canceled = urlParams.get('canceled')
+    
+    if (success === 'true') {
+      setPaymentStatus('success')
+      // Refrescar el estado de suscripción después de un pago exitoso
+      if (user?.id) {
+        // Esperar un poco para que el webhook procese la suscripción
+        setTimeout(async () => {
+          console.log('🔄 Refrescando estado de suscripción después del pago...')
+          await checkSubscription()
+          // También refrescar los datos del usuario para obtener el estado más reciente
+          window.location.reload()
+        }, 2000) // 2 segundos de delay
+      }
+      // Limpiar la URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } else if (canceled === 'true') {
+      setPaymentStatus('canceled')
+      // Limpiar la URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [user?.id, checkSubscription])
 
-  if (authLoading || suscripcionesLoading) {
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -563,21 +561,42 @@ export function Dashboard() {
     )
   }
 
+  // Si no hay usuario autenticado, redirigir al login
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-4">No estás autenticado</h2>
+          <p className="text-muted-foreground mb-4">Por favor, inicia sesión para acceder al dashboard.</p>
+          <Button onClick={() => window.location.href = '/'}>
+            Ir al Inicio
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Renderizar el dashboard apropiado según el estado de suscripción
   return (
     <>
-      {/* Botón de testing para alternar estados */}
-      <div className="fixed top-4 right-4 z-50">
-        <Button 
-          onClick={toggleMockMode}
-          variant="outline"
-          size="sm"
-          className="bg-white/90 backdrop-blur"
-        >
-          {mockMode === 'with_subscription' ? 'Sin Suscripción' : 'Con Suscripción'}
-        </Button>
-      </div>
-
-      {/* Renderizar el dashboard apropiado según el estado de suscripción */}
+      {/* Mostrar estado del pago */}
+      {paymentStatus === 'success' && (
+        <div className="fixed top-4 right-4 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+          <div className="flex items-center">
+            <Check className="h-5 w-5 mr-2" />
+            <span>¡Pago exitoso! Tu suscripción ha sido activada.</span>
+          </div>
+        </div>
+      )}
+      
+      {paymentStatus === 'canceled' && (
+        <div className="fixed top-4 right-4 z-50 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+          <div className="flex items-center">
+            <span>Pago cancelado. Puedes intentar nuevamente cuando quieras.</span>
+          </div>
+        </div>
+      )}
+      
       {hasActiveSubscription ? <ActiveSubscriptionDashboard /> : <NoSubscriptionDashboard />}
     </>
   )
