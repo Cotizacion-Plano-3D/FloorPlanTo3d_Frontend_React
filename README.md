@@ -1,12 +1,55 @@
-# React + Vite
+# FloorPlan to 3D - Frontend React
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este repositorio contiene la aplicación frontend para FloorPlan to 3D, una aplicación Next.js preparada para desarrollo y para ejecutarse en Docker.
 
-Currently, two official plugins are available:
+## Requisitos
+- Node.js 22.x (probado con v22.14.0)
+- npm (incluido con Node)
+- (Opcional) Docker Desktop si quieres ejecutar en contenedores
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Instalación local (desarrollo)
+1. Instalar dependencias:
+```powershell
+npm install
+```
+> Nota: originalmente el proyecto tenía `react@^19` pero varios paquetes no eran compatibles; por estabilidad se fijaron `react` y `react-dom` a `18.2.0`.
 
-## Expanding the ESLint configuration
+2. Levantar en modo desarrollo:
+```powershell
+npm run dev
+```
+Abre http://localhost:3000
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Ejecutar con Docker (desarrollo)
+1. Asegúrate de tener Docker Desktop instalado y ejecutándose.
+2. Levantar con Docker Compose:
+```powershell
+docker compose -f docker-compose.dev.yml up --build
+```
+3. (Opcional) Ejecutar en background:
+```powershell
+docker compose -f docker-compose.dev.yml up --build -d
+docker ps
+docker compose -f docker-compose.dev.yml logs --tail=200
+```
+4. Detener y limpiar:
+```powershell
+docker compose -f docker-compose.dev.yml down
+```
+
+## Build para producción (local)
+```powershell
+npm run build
+npm start
+```
+
+## Notas técnicas y decisiones
+- Se añadió un `Dockerfile` multi-stage y `docker-compose.dev.yml` para facilitar onboarding y reproducibilidad.
+- Para resolver conflictos de peer-dependencies detectados durante la instalación, se fijaron `react` y `react-dom` a la versión `18.2.0`. Si deseas migrar a React 19 en el futuro, revisa dependencias como `vaul` y otras que puedan requerir soporte.
+
+## Problemas comunes
+- Error `open //./pipe/dockerDesktopLinuxEngine: El sistema no puede encontrar el archivo especificado.`
+  - Asegúrate de que Docker Desktop esté en ejecución. Reinicia Docker Desktop o el sistema si es necesario.
+
+## Contacto
+Si quieres que automatice tests o mejore el Dockerfile (caching, usuario no root, etc.), dime y lo implemento.
