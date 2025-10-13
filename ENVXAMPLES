@@ -1,1 +1,5 @@
+# API del backend de FastAPI (para autenticación y pagos)
 NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# API del backend de FloorPlanTo3D (para conversión de planos)
+NEXT_PUBLIC_FLOORPLAN_API_URL=http://localhost:5000
