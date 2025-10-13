@@ -358,11 +358,27 @@ function ActiveSubscriptionDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <Button className="h-20 flex flex-col items-center justify-center gap-2">
+                    <Button 
+                      className="h-20 flex flex-col items-center justify-center gap-2"
+                      onClick={() => window.location.href = '/upload'}
+                    >
                       <Upload className="h-6 w-6" />
                       <span>Subir Planos</span>
                     </Button>
-                    <Button className="h-20 flex flex-col items-center justify-center gap-2">
+                    <Button 
+                      className="h-20 flex flex-col items-center justify-center gap-2"
+                      onClick={() => {
+                        // Obtener el último plano guardado
+                        const plans = typeof window !== 'undefined' 
+                          ? JSON.parse(localStorage.getItem('floor_plans') || '[]') 
+                          : []
+                        if (plans.length > 0) {
+                          window.location.href = `/viewer/${plans[plans.length - 1].id}`
+                        } else {
+                          window.location.href = '/upload'
+                        }
+                      }}
+                    >
                       <Eye className="h-6 w-6" />
                       <span>Vista Previa 3D</span>
                     </Button>
