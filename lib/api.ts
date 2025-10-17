@@ -21,23 +21,16 @@ class ApiClient {
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL
     // NO cargar token automáticamente - se manejará desde AuthContext
-    console.log('🔧 ApiClient constructor - NO cargando token automáticamente')
   }
 
   setToken(token: string | null) {
     this.token = token
-    console.log('🔧 API Client - setToken:', {
-      hasToken: !!token,
-      tokenLength: token?.length || 0
-    })
     
     if (typeof window !== 'undefined') {
       if (token) {
         localStorage.setItem('auth_token', token)
-        console.log('💾 Token guardado en localStorage')
       } else {
         localStorage.removeItem('auth_token')
-        console.log('🗑️ Token eliminado de localStorage')
       }
     }
   }
@@ -48,10 +41,6 @@ class ApiClient {
       const savedToken = localStorage.getItem('auth_token')
       if (savedToken) {
         this.token = savedToken
-        console.log('🔄 Token inicializado desde localStorage:', {
-          hasToken: !!savedToken,
-          tokenLength: savedToken.length
-        })
         return savedToken
       }
     }
@@ -73,11 +62,6 @@ class ApiClient {
       ...options,
     }
 
-    console.log('🌐 API Request:', {
-      url,
-      hasToken: !!this.token,
-      method: options.method || 'GET'
-    })
 
     try {
       const response = await fetch(url, config)
@@ -91,7 +75,6 @@ class ApiClient {
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
       }
       
-      console.log('✅ API Response OK:', url)
       return await response.json()
     } catch (error) {
       console.error('❌ API request failed:', error)

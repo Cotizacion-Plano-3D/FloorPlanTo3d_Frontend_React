@@ -554,7 +554,6 @@ export function Dashboard() {
       if (user?.id) {
         // Esperar un poco para que el webhook procese la suscripción
         setTimeout(async () => {
-          console.log('🔄 Refrescando estado de suscripción después del pago...')
           await checkSubscription()
           // También refrescar los datos del usuario para obtener el estado más reciente
           window.location.reload()
