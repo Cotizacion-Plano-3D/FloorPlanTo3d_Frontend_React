@@ -9,6 +9,11 @@ import {
   DashboardResponse,
   StripeCheckoutRequest,
   StripeCheckoutResponse,
+  Plano,
+  PlanoCreate,
+  PlanoUpdate,
+  PlanoListResponse,
+  Modelo3DDataResponse,
   ApiError 
 } from '@/types/api'
 
@@ -16,7 +21,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 class ApiClient {
   private baseURL: string
-  private token: string | null = null
+  public token: string | null = null
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL
@@ -53,12 +58,21 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`
     
+    // No establecer Content-Type si el body es FormData (el navegador lo hace automáticamente)
+    const isFormData = options.body instanceof FormData
+    
+    const headers: HeadersInit = {
+      ...(this.token && { Authorization: `Bearer ${this.token}` }),
+      ...(options.headers as Record<string, string>),
+    }
+    
+    // Solo añadir Content-Type si NO es FormData
+    if (!isFormData) {
+      (headers as Record<string, string>)['Content-Type'] = 'application/json'
+    }
+    
     const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
-        ...options.headers,
-      },
+      headers,
       ...options,
     }
 
@@ -229,6 +243,51 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(membresiaData),
     })
+  }
+
+  // Plano endpoints
+  async createPlano(formData: FormData): Promise<Plano> {
+    console.log('🔑 Token actual:', this.token ? 'Presente' : 'Ausente')
+    console.log('📤 Enviando FormData al backend...')
+    return this.request<Plano>('/planos/', {
+      method: 'POST',
+      body: formData,
+    })
+  }
+
+  async getPlanos(skip: number = 0, limit: number = 100): Promise<PlanoListResponse> {
+    return this.request<PlanoListResponse>(`/planos/?skip=${skip}&limit=${limit}`)
+  }
+
+  async getPlano(id: number): Promise<Plano> {
+    return this.request<Plano>(`/planos/${id}`)
+  }
+
+  async updatePlano(id: number, planoData: PlanoUpdate): Promise<Plano> {
+    return this.request<Plano>(`/planos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(planoData),
+    })
+  }
+
+  async deletePlano(id: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/planos/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async convertirPlanoA3D(id: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/planos/${id}/convertir`, {
+      method: 'POST',
+    })
+  }
+
+  async getModelo3DData(id: number): Promise<Modelo3DDataResponse> {
+    return this.request<Modelo3DDataResponse>(`/planos/${id}/modelo3d`)
+  }
+
+  async render3DFromCache(id: number): Promise<any> {
+    return this.request<any>(`/planos/${id}/render-3d`)
   }
 }
 
