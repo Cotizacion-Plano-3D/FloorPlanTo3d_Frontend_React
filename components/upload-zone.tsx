@@ -27,6 +27,7 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
   const [uploadedPlano, setUploadedPlano] = useState<Plano | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [showResultModal, setShowResultModal] = useState(false)
+  const [isVerificationError, setIsVerificationError] = useState(false)
   const router = useRouter()
   const { isAuthenticated, user } = useAuth()
 
@@ -101,7 +102,8 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
           formData.append('tipo_plano', 'arquitectónico')
           formData.append('descripcion', `Plano subido el ${new Date().toLocaleDateString()}`)
 
-          // Subir el plano usando la nueva API
+          // Subir el plano usando la nueva API (ahora incluye verificación y conversión)
+          console.log(`🔄 Procesando archivo: ${file.name}`)
           const plano = await apiClient.createPlano(formData)
 
           // Marcar como exitoso
@@ -112,35 +114,44 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
             onFilesUploaded([file])
           }
 
-          toast.success(`Plano "${file.name}" subido exitosamente`)
+          toast.success(`Plano "${file.name}" verificado y convertido a 3D exitosamente`)
 
-          // Mostrar modal de éxito
+          // Mostrar modal de éxito (ya convertido)
           setUploadedPlano(plano)
           setUploadError(null)
+          setIsVerificationError(false)
           setShowResultModal(true)
 
-          // Intentar convertir automáticamente
-          try {
-            await apiClient.convertirPlanoA3D(plano.id)
-            toast.success('Conversión a 3D iniciada')
-          } catch (conversionError) {
-            console.error('Error iniciando conversión:', conversionError)
-            // No mostrar error crítico, el usuario puede convertir manualmente después
-          }
-
         } catch (error) {
-          console.error(`Error subiendo ${file.name}:`, error)
+          console.error(`Error procesando ${file.name}:`, error)
           setProgress(prev => ({ ...prev, [file.name]: 'error' }))
           const errorMsg = error instanceof Error ? error.message : 'Error desconocido'
           setErrorMessages(prev => ({
             ...prev,
             [file.name]: errorMsg
           }))
-          toast.error(`Error al subir "${file.name}"`)
+          
+          // Determinar si es error de verificación
+          const isVerificationError = errorMsg.includes('no es un plano') || 
+                                    errorMsg.includes('no contiene elementos') ||
+                                    errorMsg.includes('arquitectónico válido') ||
+                                    errorMsg.includes('reconocibles') ||
+                                    errorMsg.includes('no pudo procesar la imagen') ||
+                                    errorMsg.includes('Formato de imagen no soportado') ||
+                                    errorMsg.includes('Imagen corrupta o inválida') ||
+                                    errorMsg.includes('Respuesta inválida del sistema') ||
+                                    errorMsg.includes('Tiempo de procesamiento excedido')
+          
+          if (isVerificationError) {
+            toast.error(`"${file.name}" no es un plano arquitectónico válido`)
+          } else {
+            toast.error(`Error procesando "${file.name}"`)
+          }
           
           // Mostrar modal de error
           setUploadedPlano(null)
           setUploadError(errorMsg)
+          setIsVerificationError(isVerificationError)
           setShowResultModal(true)
         }
       }
@@ -205,10 +216,12 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
         <UploadResultModal
           plano={uploadedPlano}
           error={uploadError}
+          isVerificationError={isVerificationError}
           onClose={() => {
             setShowResultModal(false)
             setUploadedPlano(null)
             setUploadError(null)
+            setIsVerificationError(false)
           }}
           onConvert={handleConvertPlano}
         />

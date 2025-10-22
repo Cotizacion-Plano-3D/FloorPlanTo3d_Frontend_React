@@ -11,9 +11,10 @@ interface UploadResultModalProps {
   error: string | null
   onClose: () => void
   onConvert?: (planoId: number) => void
+  isVerificationError?: boolean
 }
 
-export function UploadResultModal({ plano, error, onClose, onConvert }: UploadResultModalProps) {
+export function UploadResultModal({ plano, error, onClose, onConvert, isVerificationError = false }: UploadResultModalProps) {
   const router = useRouter()
 
   if (!plano && !error) return null
@@ -54,10 +55,17 @@ export function UploadResultModal({ plano, error, onClose, onConvert }: UploadRe
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle className="w-10 h-10 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold text-foreground">¡Plano Subido!</h2>
+              <h2 className="text-2xl font-bold text-foreground">¡Plano Convertido a 3D!</h2>
               <p className="text-muted-foreground">
-                Tu plano <span className="font-semibold text-foreground">"{plano.nombre}"</span> ha sido subido exitosamente.
+                Tu plano <span className="font-semibold text-foreground">"{plano.nombre}"</span> ha sido verificado y convertido exitosamente a 3D.
               </p>
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  ✅ Plano verificado como válido<br/>
+                  ✅ Convertido a modelo 3D<br/>
+                  ✅ Listo para visualizar
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -125,12 +133,25 @@ export function UploadResultModal({ plano, error, onClose, onConvert }: UploadRe
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
                 <AlertCircle className="w-10 h-10 text-red-600" />
               </div>
-              <h2 className="text-2xl font-bold text-foreground">Error al Subir</h2>
+              <h2 className="text-2xl font-bold text-foreground">
+                {isVerificationError ? 'Archivo No Válido' : 'Error al Subir'}
+              </h2>
               <p className="text-muted-foreground">
-                Hubo un problema al subir tu plano.
+                {isVerificationError 
+                  ? 'El archivo no es un plano arquitectónico válido.'
+                  : 'Hubo un problema al procesar tu archivo.'
+                }
               </p>
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-800">{error}</p>
+                {isVerificationError && (
+                  <div className="mt-2 text-xs text-red-700">
+                    <p><strong>Tipos de archivos válidos:</strong></p>
+                    <p>• Planos arquitectónicos con paredes, puertas y ventanas</p>
+                    <p>• Imágenes claras de plantas arquitectónicas</p>
+                    <p>• Formatos: JPG, PNG, WebP</p>
+                  </div>
+                )}
               </div>
             </div>
 
