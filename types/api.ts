@@ -83,3 +83,55 @@ export interface StripeCheckoutRequest {
 export interface StripeCheckoutResponse {
   checkout_url: string
 }
+
+// Plano types
+export interface Plano {
+  id: number
+  usuario_id: number
+  nombre: string
+  url?: string
+  formato: string
+  tipo_plano?: string
+  descripcion?: string
+  medidas_extraidas?: Record<string, any>
+  estado: 'subido' | 'procesando' | 'completado' | 'error'
+  fecha_subida: string
+  fecha_actualizacion: string
+  modelo3d?: Modelo3D
+}
+
+export interface Modelo3D {
+  id: number
+  plano_id: number
+  datos_json: Record<string, any>
+  estado_renderizado: string
+  fecha_generacion: string
+  fecha_actualizacion: string
+}
+
+export interface PlanoCreate {
+  nombre: string
+  formato?: string
+  tipo_plano?: string
+  descripcion?: string
+  medidas_extraidas?: Record<string, any>
+}
+
+export interface PlanoUpdate {
+  nombre?: string
+  tipo_plano?: string
+  descripcion?: string
+  medidas_extraidas?: Record<string, any>
+}
+
+export interface PlanoListResponse {
+  planos: Plano[]
+  total: number
+  pagina: number
+  por_pagina: number
+  total_paginas: number
+}
+
+export interface Modelo3DDataResponse {
+  datos_json: Record<string, any>
+}

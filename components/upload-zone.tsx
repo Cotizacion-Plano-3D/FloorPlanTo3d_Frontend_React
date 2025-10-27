@@ -7,9 +7,12 @@ import { Upload, ImageIcon, X, Loader2, CheckCircle, AlertCircle } from "lucide-
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { floorPlanApi, FloorPlanThreeJSResponse } from "@/lib/floorplan-api"
-import { floorPlanStorage } from "@/lib/floor-plan-storage"
+import { apiClient } from "@/lib/api"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { useAuth } from "@/contexts/AuthContext"
+import { UploadResultModal } from "@/components/upload-result-modal"
+import { Plano } from "@/types/api"
 
 interface UploadZoneProps {
   onFilesUploaded?: (files: File[]) => void
@@ -21,7 +24,12 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
   const [processing, setProcessing] = useState(false)
   const [progress, setProgress] = useState<{ [key: string]: 'pending' | 'processing' | 'success' | 'error' }>({})
   const [errorMessages, setErrorMessages] = useState<{ [key: string]: string }>({})
+  const [uploadedPlano, setUploadedPlano] = useState<Plano | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [showResultModal, setShowResultModal] = useState(false)
+  const [isVerificationError, setIsVerificationError] = useState(false)
   const router = useRouter()
+  const { isAuthenticated, user } = useAuth()
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -67,6 +75,16 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return
 
+    // Verificar autenticación
+    if (!isAuthenticated || !user) {
+      toast.error("Debes estar autenticado para subir planos")
+      router.push('/')
+      return
+    }
+
+    console.log('👤 Usuario autenticado:', user.correo)
+    console.log('🔑 Token presente:', !!apiClient.token)
+
     setProcessing(true)
 
     try {
@@ -76,23 +94,17 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
           // Marcar como procesando
           setProgress(prev => ({ ...prev, [file.name]: 'processing' }))
 
-          // Convertir el plano usando la API de FloorPlan
-          const result = await floorPlanApi.convertFloorPlan(file, 'threejs')
+          // Crear FormData para enviar el archivo
+          const formData = new FormData()
+          formData.append('file', file)
+          formData.append('nombre', file.name)
+          formData.append('formato', file.type.split('/')[1] || 'image')
+          formData.append('tipo_plano', 'arquitectónico')
+          formData.append('descripcion', `Plano subido el ${new Date().toLocaleDateString()}`)
 
-          // Crear URL de la imagen
-          const imageUrl = URL.createObjectURL(file)
-
-          // Generar ID único
-          const planId = `plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-          // Guardar el plano procesado
-          floorPlanStorage.saveFloorPlan({
-            id: planId,
-            name: file.name,
-            uploadDate: new Date().toISOString(),
-            imageUrl: imageUrl,
-            threejsData: result as FloorPlanThreeJSResponse,
-          })
+          // Subir el plano usando la nueva API (ahora incluye verificación y conversión)
+          console.log(`🔄 Procesando archivo: ${file.name}`)
+          const plano = await apiClient.createPlano(formData)
 
           // Marcar como exitoso
           setProgress(prev => ({ ...prev, [file.name]: 'success' }))
@@ -102,18 +114,45 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
             onFilesUploaded([file])
           }
 
-          // Esperar un momento antes de redirigir al viewer
-          setTimeout(() => {
-            router.push(`/viewer/${planId}`)
-          }, 1000)
+          toast.success(`Plano "${file.name}" verificado y convertido a 3D exitosamente`)
+
+          // Mostrar modal de éxito (ya convertido)
+          setUploadedPlano(plano)
+          setUploadError(null)
+          setIsVerificationError(false)
+          setShowResultModal(true)
 
         } catch (error) {
           console.error(`Error procesando ${file.name}:`, error)
           setProgress(prev => ({ ...prev, [file.name]: 'error' }))
+          const errorMsg = error instanceof Error ? error.message : 'Error desconocido'
           setErrorMessages(prev => ({
             ...prev,
-            [file.name]: error instanceof Error ? error.message : 'Error desconocido'
+            [file.name]: errorMsg
           }))
+          
+          // Determinar si es error de verificación
+          const isVerificationError = errorMsg.includes('no es un plano') || 
+                                    errorMsg.includes('no contiene elementos') ||
+                                    errorMsg.includes('arquitectónico válido') ||
+                                    errorMsg.includes('reconocibles') ||
+                                    errorMsg.includes('no pudo procesar la imagen') ||
+                                    errorMsg.includes('Formato de imagen no soportado') ||
+                                    errorMsg.includes('Imagen corrupta o inválida') ||
+                                    errorMsg.includes('Respuesta inválida del sistema') ||
+                                    errorMsg.includes('Tiempo de procesamiento excedido')
+          
+          if (isVerificationError) {
+            toast.error(`"${file.name}" no es un plano arquitectónico válido`)
+          } else {
+            toast.error(`Error procesando "${file.name}"`)
+          }
+          
+          // Mostrar modal de error
+          setUploadedPlano(null)
+          setUploadError(errorMsg)
+          setIsVerificationError(isVerificationError)
+          setShowResultModal(true)
         }
       }
     } finally {
@@ -158,8 +197,35 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
     }
   }
 
+  const handleConvertPlano = async (planoId: number) => {
+    try {
+      await apiClient.convertirPlanoA3D(planoId)
+      toast.success('Conversión iniciada')
+      setShowResultModal(false)
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Error convirtiendo plano:', error)
+      toast.error('Error al iniciar la conversión')
+    }
+  }
+
   return (
     <div className="space-y-4">
+      {/* Modal de resultado */}
+      {showResultModal && (
+        <UploadResultModal
+          plano={uploadedPlano}
+          error={uploadError}
+          isVerificationError={isVerificationError}
+          onClose={() => {
+            setShowResultModal(false)
+            setUploadedPlano(null)
+            setUploadError(null)
+            setIsVerificationError(false)
+          }}
+          onConvert={handleConvertPlano}
+        />
+      )}
       <Card
         className={cn(
           "border-2 border-dashed transition-all duration-200",
@@ -214,7 +280,7 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Convertir a 3D
+                    Subir Plano
                   </>
                 )}
               </Button>
@@ -233,7 +299,7 @@ export function UploadZone({ onFilesUploaded }: UploadZoneProps) {
                     <p className="text-xs text-muted-foreground">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                       {progress[file.name] === 'processing' && ' - Procesando...'}
-                      {progress[file.name] === 'success' && ' - ✓ Convertido exitosamente'}
+                      {progress[file.name] === 'success' && ' - ✓ Subido exitosamente'}
                       {progress[file.name] === 'error' && ` - Error: ${errorMessages[file.name]}`}
                     </p>
                   </div>

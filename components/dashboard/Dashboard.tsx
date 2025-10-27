@@ -29,6 +29,7 @@ import {
   Star,
   Check
 } from 'lucide-react'
+import MisPlanos from '@/components/mis-planos'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { PricingSection } from '@/components/pricing-section'
@@ -176,7 +177,7 @@ function NoSubscriptionDashboard() {
 }
 
 // Componente para usuarios CON suscripción activa
-function ActiveSubscriptionDashboard() {
+function ActiveSubscriptionDashboard({ onShowMisPlanos }: { onShowMisPlanos: () => void }) {
   const { user, logout } = useAuth()
   const { membresias, isLoading: membresiasLoading } = useMembresias()
   const { suscripciones, isLoading: suscripcionesLoading, fetchSuscripciones } = useSuscripciones()
@@ -367,20 +368,10 @@ function ActiveSubscriptionDashboard() {
                     </Button>
                     <Button 
                       className="h-20 flex flex-col items-center justify-center gap-2"
-                      onClick={() => {
-                        // Obtener el último plano guardado
-                        const plans = typeof window !== 'undefined' 
-                          ? JSON.parse(localStorage.getItem('floor_plans') || '[]') 
-                          : []
-                        if (plans.length > 0) {
-                          window.location.href = `/viewer/${plans[plans.length - 1].id}`
-                        } else {
-                          window.location.href = '/upload'
-                        }
-                      }}
+                      onClick={onShowMisPlanos}
                     >
                       <Eye className="h-6 w-6" />
-                      <span>Vista Previa 3D</span>
+                      <span>Mis planos</span>
                     </Button>
                     <Button className="h-20 flex flex-col items-center justify-center gap-2">
                       <Zap className="h-6 w-6" />
@@ -541,6 +532,7 @@ function ActiveSubscriptionDashboard() {
 export function Dashboard() {
   const { user, isLoading: authLoading, hasActiveSubscription, checkSubscription } = useAuth()
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
+  const [showMisPlanos, setShowMisPlanos] = useState(false)
 
   // Manejar parámetros de URL para pagos
   useEffect(() => {
@@ -612,7 +604,18 @@ export function Dashboard() {
         </div>
       )}
       
-      {hasActiveSubscription ? <ActiveSubscriptionDashboard /> : <NoSubscriptionDashboard />}
+      {hasActiveSubscription ? <ActiveSubscriptionDashboard onShowMisPlanos={() => setShowMisPlanos(true)} /> : <NoSubscriptionDashboard />}
+      
+      {/* Modal para Mis Planos */}
+      {showMisPlanos && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <MisPlanos onClose={() => setShowMisPlanos(false)} />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
