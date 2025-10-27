@@ -1,7 +1,7 @@
 "use client"
 
 import { Canvas } from "@react-three/fiber"
-import { OrbitControls, PerspectiveCamera, Environment } from "@react-three/drei"
+import { OrbitControls, PerspectiveCamera } from "@react-three/drei"
 import { Suspense } from "react"
 import * as THREE from "three"
 
@@ -127,8 +127,12 @@ export function FloorPlanPreview({ imageUrl, modelo3dData }: FloorPlanPreviewPro
             maxPolarAngle={Math.PI / 2}
             target={centerPosition as [number, number, number]}
           />
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[5, 5, 5]} intensity={1} />
+          
+          {/* Iluminación manual - sin Environment */}
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[10, 10, 5]} intensity={1.2} castShadow />
+          <directionalLight position={[-5, 5, -5]} intensity={0.4} />
+          <pointLight position={[0, 8, 0]} intensity={0.5} color="#ffffff" />
           
           {hasModel3D ? (
             <group position={[-centerPosition[0], -centerPosition[1], -centerPosition[2]]}>
@@ -156,8 +160,6 @@ export function FloorPlanPreview({ imageUrl, modelo3dData }: FloorPlanPreviewPro
           ) : (
             <FloorPlanMesh imageUrl={imageUrl} />
           )}
-          
-          <Environment preset="city" />
         </Suspense>
       </Canvas>
     </div>

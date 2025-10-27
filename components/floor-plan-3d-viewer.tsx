@@ -1,7 +1,7 @@
 "use client"
 
 import { Canvas } from "@react-three/fiber"
-import { OrbitControls, PerspectiveCamera, Environment, Grid, ContactShadows } from "@react-three/drei"
+import { OrbitControls, PerspectiveCamera, Grid, ContactShadows } from "@react-three/drei"
 import { Suspense, useState } from "react"
 import * as THREE from "three"
 import { ThreeJSObject, ThreeJSScene } from "@/lib/floorplan-api"
@@ -203,9 +203,6 @@ export function FloorPlan3DViewer({ imageUrl, sceneData }: FloorPlan3DViewerProp
             fadeStrength={1}
             infiniteGrid
           />
-
-          {/* Environment */}
-          <Environment preset="city" />
 
           {/* Fog for depth */}
           <fog attach="fog" args={["#f5f5f5", 20, 50]} />
