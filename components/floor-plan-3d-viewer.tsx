@@ -5,6 +5,10 @@ import { OrbitControls, PerspectiveCamera, Grid, ContactShadows } from "@react-t
 import { Suspense, useState } from "react"
 import * as THREE from "three"
 import { ThreeJSObject, ThreeJSScene } from "@/lib/floorplan-api"
+import { DoorGeometry } from "@/components/three/geometries/DoorGeometry"
+import { WindowGeometry } from "@/components/three/geometries/WindowGeometry"
+import { WallGeometry } from "@/components/three/geometries/WallGeometry"
+import { floorMaterials } from "@/lib/three/materials"
 
 interface FloorPlan3DViewerProps {
   imageUrl?: string
@@ -16,32 +20,67 @@ interface FloorPlan3DViewerProps {
 
 // Componente para renderizar objetos 3D del backend
 function Object3D({ obj }: { obj: ThreeJSObject }) {
-  const getColor = (type: string) => {
-    switch (type) {
-      case 'wall':
-        return '#8B4513' // Marrón para paredes
-      case 'window':
-        return '#87CEEB' // Azul cielo para ventanas
-      case 'door':
-        return '#DEB887' // Beige para puertas
-      default:
-        return '#CCCCCC'
-    }
+  // Renderizar PUERTAS con el nuevo DoorGeometry component
+  if (obj.type === 'door') {
+    return (
+      <group
+        position={[obj.position.x, obj.position.y, obj.position.z]}
+        rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
+      >
+        <DoorGeometry
+          width={obj.dimensions.width}
+          height={obj.dimensions.height}
+          depth={Math.max(obj.dimensions.depth, 0.1)} // Mínimo 0.1 para visibilidad aérea
+          style="elegant"
+          emphasizeFrame={true}
+        />
+      </group>
+    )
   }
 
-  const getOpacity = (type: string) => {
-    switch (type) {
-      case 'wall':
-        return 0.9
-      case 'window':
-        return 0.3
-      case 'door':
-        return 0.7
-      default:
-        return 0.5
-    }
+  // Renderizar VENTANAS con el nuevo WindowGeometry component
+  if (obj.type === 'window') {
+    return (
+      <group
+        position={[obj.position.x, obj.position.y, obj.position.z]}
+        rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
+      >
+        <WindowGeometry
+          width={obj.dimensions.width}
+          height={obj.dimensions.height}
+          depth={obj.dimensions.depth}
+          style="standard"
+          emphasizeFrame={true}
+          minDepth={0.1}
+          dividers={{
+            pattern: 'cross',
+            thickness: 0.02,
+            depth: 0.03
+          }}
+        />
+      </group>
+    )
   }
 
+  // Renderizar PAREDES con el nuevo WallGeometry component
+  if (obj.type === 'wall') {
+    return (
+      <group
+        position={[obj.position.x, obj.position.y, obj.position.z]}
+        rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
+      >
+        <WallGeometry
+          width={obj.dimensions.width}
+          height={obj.dimensions.height}
+          depth={obj.dimensions.depth}
+          material="painted"
+          customColor="#1B4079"
+        />
+      </group>
+    )
+  }
+
+  // Fallback para otros objetos
   return (
     <mesh
       position={[obj.position.x, obj.position.y, obj.position.z]}
@@ -51,9 +90,7 @@ function Object3D({ obj }: { obj: ThreeJSObject }) {
     >
       <boxGeometry args={[obj.dimensions.width, obj.dimensions.height, obj.dimensions.depth]} />
       <meshStandardMaterial
-        color={getColor(obj.type)}
-        transparent={obj.type !== 'wall'}
-        opacity={getOpacity(obj.type)}
+        color="#CCCCCC"
         roughness={0.7}
         metalness={0.2}
       />
@@ -73,12 +110,19 @@ function FloorPlan3DModel({
   if (sceneData && sceneData.objects.length > 0) {
     const { scene, objects } = sceneData
     
+    // Material mejorado del piso
+    const floorMaterial = floorMaterials.ceramic.clone()
+    
     return (
       <group>
-        {/* Piso base con dimensiones del plano */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[scene.bounds.width / 2, -0.01, scene.bounds.height / 2]} receiveShadow>
+        {/* Piso base mejorado con material realista */}
+        <mesh 
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[scene.bounds.width / 2, -0.01, scene.bounds.height / 2]} 
+          receiveShadow
+        >
           <planeGeometry args={[scene.bounds.width * 1.2, scene.bounds.height * 1.2]} />
-          <meshStandardMaterial color="#f5f5f5" roughness={0.9} metalness={0.1} />
+          <primitive object={floorMaterial} attach="material" />
         </mesh>
 
         {/* Renderizar todos los objetos detectados */}
@@ -162,11 +206,13 @@ export function FloorPlan3DViewer({ imageUrl, sceneData }: FloorPlan3DViewerProp
             maxPolarAngle={Math.PI / 2.1}
           />
 
-          {/* Lighting */}
-          <ambientLight intensity={0.5} />
+          {/* Lighting - Optimizado para vista aérea */}
+          <ambientLight intensity={0.7} />
+          
+          {/* Luz direccional principal desde arriba (vista aérea) */}
           <directionalLight
-            position={[10, 10, 5]}
-            intensity={1.2}
+            position={[0, 15, 0]}
+            intensity={1.5}
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
@@ -175,8 +221,13 @@ export function FloorPlan3DViewer({ imageUrl, sceneData }: FloorPlan3DViewerProp
             shadow-camera-top={20}
             shadow-camera-bottom={-20}
           />
-          <directionalLight position={[-5, 5, -5]} intensity={0.4} />
-          <pointLight position={[0, 8, 0]} intensity={0.6} color="#CBDF90" />
+          
+          {/* Luces de relleno laterales para mejor definición */}
+          <directionalLight position={[10, 8, 10]} intensity={0.6} />
+          <directionalLight position={[-10, 8, -10]} intensity={0.5} />
+          
+          {/* Luz suave cenital para resaltar detalles */}
+          <pointLight position={[0, 10, 0]} intensity={0.4} color="#FFFFFF" />
 
           {/* 3D Model */}
           <FloorPlan3DModel imageUrl={imageUrl} sceneData={sceneData} />
