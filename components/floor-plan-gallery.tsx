@@ -22,6 +22,7 @@ export function FloorPlanGallery({ plans, onPlanoDeleted }: FloorPlanGalleryProp
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set())
   const [modelo3dCache, setModelo3dCache] = useState<Map<number, any>>(new Map())
   const [loadingModels, setLoadingModels] = useState<Set<number>>(new Set())
+  const [active3DPreview, setActive3DPreview] = useState<number | null>(null) // ✅ NUEVO: Solo un Canvas activo
   const { toast } = useToast()
 
   const handleImageError = (planId: number) => {
@@ -59,7 +60,15 @@ export function FloorPlanGallery({ plans, onPlanoDeleted }: FloorPlanGalleryProp
     // Cargar modelo 3D si el plano está completado
     if (estado === 'completado') {
       loadModelo3D(planId)
+      // ✅ NUEVO: Activar preview 3D solo para este plano
+      setActive3DPreview(planId)
     }
+  }
+
+  const handleMouseLeave = () => {
+    setHoveredId(null)
+    // ✅ NUEVO: Desactivar preview 3D al salir
+    setActive3DPreview(null)
   }
 
   const handleDownload = async (plan: Plano) => {
@@ -160,11 +169,12 @@ export function FloorPlanGallery({ plans, onPlanoDeleted }: FloorPlanGalleryProp
           key={plan.id}
           className="group overflow-hidden bg-card border-border hover:shadow-xl transition-all duration-300"
           onMouseEnter={() => handleMouseEnter(plan.id, plan.estado)}
-          onMouseLeave={() => setHoveredId(null)}
+          onMouseLeave={handleMouseLeave}
         >
           <div className="relative aspect-[4/3] bg-muted overflow-hidden">
             {plan.url && !imageErrors.has(plan.id) ? (
-              hoveredId === plan.id ? (
+              // ✅ OPTIMIZADO: Solo renderizar Canvas si es el preview activo
+              hoveredId === plan.id && active3DPreview === plan.id ? (
                 <FloorPlanPreview 
                   imageUrl={`${process.env.NEXT_PUBLIC_API_URL}/planos/${plan.id}/image`}
                   modelo3dData={modelo3dCache.get(plan.id)}
