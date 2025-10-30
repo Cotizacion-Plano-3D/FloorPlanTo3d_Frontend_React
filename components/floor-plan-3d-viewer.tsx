@@ -110,7 +110,43 @@ function Object3D({ obj }: { obj: ThreeJSObject }) {
     )
   }
 
-  // Renderizado normal para otros objetos (paredes, puertas, etc.)
+  // Renderizado especial para puertas: puerta desde el suelo + pared superior
+  if (obj.type === 'door') {
+    // Asumimos que obj.dimensions.height representa la altura total de pared en esa celda
+    const wallHeight = obj.dimensions.height
+    // Altura típica de una puerta y dintel superior
+    const doorHeight = wallHeight * 0.90
+    const topWallHeight = 1.2
+
+    const baseY = obj.position.y - (wallHeight / 2)
+    const doorY = baseY + (doorHeight / 2) // puerta toca el piso
+    const topWallY = baseY + doorHeight + (topWallHeight / 2)
+
+    return (
+      <group position={[obj.position.x, 0, obj.position.z]} rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}>
+        {/* Puerta */}
+        <mesh position={[0, doorY, 0]} castShadow receiveShadow>
+          <boxGeometry args={[obj.dimensions.width, doorHeight, obj.dimensions.depth]} />
+          <meshStandardMaterial
+            color="#DEB887"
+            opacity={1}
+            roughness={0.7}
+            metalness={0.2}
+          />
+        </mesh>
+
+        {/* Dintel de pared superior sobre la puerta */}
+        {topWallHeight > 0 && (
+          <mesh position={[0, topWallY, 0]} castShadow receiveShadow>
+            <boxGeometry args={[obj.dimensions.width, topWallHeight, obj.dimensions.depth]} />
+            <meshStandardMaterial color="#FFFFFF" opacity={0.9} roughness={0.7} metalness={0.2} />
+          </mesh>
+        )}
+      </group>
+    )
+  }
+
+  // Renderizado normal para otros objetos (paredes, etc.)
   return (
     <mesh
       position={[obj.position.x, obj.position.y, obj.position.z]}
