@@ -19,7 +19,7 @@ function Object3D({ obj }: { obj: ThreeJSObject }) {
   const getColor = (type: string) => {
     switch (type) {
       case 'wall':
-        return '#8B4513' // Marrón para paredes
+        return '#FFFFFF' // blanco claro para paredes
       case 'window':
         return '#87CEEB' // Azul cielo para ventanas
       case 'door':
@@ -36,12 +36,81 @@ function Object3D({ obj }: { obj: ThreeJSObject }) {
       case 'window':
         return 0.3
       case 'door':
-        return 0.7
+        return 1.0
       default:
         return 0.5
     }
   }
 
+  // Renderizado especial para ventanas
+  if (obj.type === 'window') {
+    const wallHeight = obj.dimensions.height
+    // Proporciones más realistas de una ventana:
+    // - Pared inferior (desde el suelo): 35-40% de la altura total
+    // - Ventana (en medio): 48-50% de la altura total  
+    // - Pared superior (hasta el techo): 12-15% de la altura total
+    const bottomWallHeight = wallHeight * 0.70 // Pared inferior 38%
+    const windowHeight = wallHeight * 0.80 // La ventana ocupa 50% de la altura total
+    const topWallHeight = wallHeight * 0.50 // Pared superior 12%
+    
+    // Calcular posiciones verticales
+    const baseY = obj.position.y - (wallHeight / 2)
+    const bottomWallY = baseY + (bottomWallHeight / 2)
+    const windowY = baseY + bottomWallHeight + (windowHeight / 2)
+    const topWallY = baseY + bottomWallHeight + windowHeight + (topWallHeight / 2)
+
+    return (
+      <group position={[obj.position.x, 0, obj.position.z]} rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}>
+        {/* Pared inferior (debajo de la ventana) */}
+        <mesh
+          position={[0, bottomWallY, 0]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[obj.dimensions.width, bottomWallHeight, obj.dimensions.depth]} />
+          <meshStandardMaterial
+            color="#FFFFFF"
+            opacity={0.9}
+            roughness={0.7}
+            metalness={0.2}
+          />
+        </mesh>
+
+        {/* Ventana (en medio) */}
+        <mesh
+          position={[0, windowY, 0]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[obj.dimensions.width, windowHeight, obj.dimensions.depth]} />
+          <meshStandardMaterial
+            color="#87CEEB"
+            transparent
+            opacity={0.3}
+            roughness={0.1}
+            metalness={0.8}
+          />
+        </mesh>
+
+        {/* Pared superior (encima de la ventana) */}
+        <mesh
+          position={[0, topWallY, 0]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[obj.dimensions.width, topWallHeight, obj.dimensions.depth]} />
+          <meshStandardMaterial
+            color="#FFFFFF"
+            opacity={0.9}
+            roughness={0.7}
+            metalness={0.2}
+          />
+        </mesh>
+      </group>
+    )
+  }
+
+  // Renderizado normal para otros objetos (paredes, puertas, etc.)
   return (
     <mesh
       position={[obj.position.x, obj.position.y, obj.position.z]}
@@ -78,7 +147,7 @@ function FloorPlan3DModel({
         {/* Piso base con dimensiones del plano */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[scene.bounds.width / 2, -0.01, scene.bounds.height / 2]} receiveShadow>
           <planeGeometry args={[scene.bounds.width * 1.2, scene.bounds.height * 1.2]} />
-          <meshStandardMaterial color="#f5f5f5" roughness={0.9} metalness={0.1} />
+          <meshStandardMaterial color="#048F0B" roughness={0.9} metalness={0.1} />
         </mesh>
 
         {/* Renderizar todos los objetos detectados */}
