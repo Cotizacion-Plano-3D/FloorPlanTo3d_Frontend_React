@@ -14,6 +14,18 @@ import {
   PlanoUpdate,
   PlanoListResponse,
   Modelo3DDataResponse,
+  Categoria,
+  CategoriaCreate,
+  CategoriaResponse,
+  Material,
+  MaterialCreate,
+  MaterialUpdate,
+  MaterialResponse,
+  MaterialModelo3D,
+  MaterialModelo3DCreate,
+  MaterialModelo3DUpdate,
+  MaterialModelo3DResponse,
+  SuccessResponse,
   ApiError 
 } from '@/types/api'
 
@@ -288,6 +300,104 @@ class ApiClient {
 
   async render3DFromCache(id: number): Promise<any> {
     return this.request<any>(`/planos/${id}/render-3d`)
+  }
+
+  // Categoria endpoints
+  async getCategorias(): Promise<SuccessResponse<CategoriaResponse>> {
+    return this.request<SuccessResponse<CategoriaResponse>>('/categorias/')
+  }
+
+  async getCategoria(id: number): Promise<Categoria> {
+    return this.request<Categoria>(`/categorias/${id}`)
+  }
+
+  async createCategoria(categoriaData: CategoriaCreate): Promise<Categoria> {
+    return this.request<Categoria>('/categorias/', {
+      method: 'POST',
+      body: JSON.stringify(categoriaData),
+    })
+  }
+
+  // Material endpoints
+  async getMateriales(
+    skip: number = 0,
+    limit: number = 100,
+    categoriaId?: number,
+    search?: string
+  ): Promise<SuccessResponse<MaterialResponse>> {
+    let url = `/materiales/?skip=${skip}&limit=${limit}`
+    if (categoriaId) url += `&categoria_id=${categoriaId}`
+    if (search) url += `&search=${encodeURIComponent(search)}`
+    return this.request<SuccessResponse<MaterialResponse>>(url)
+  }
+
+  async getMaterial(id: number): Promise<Material> {
+    return this.request<Material>(`/materiales/${id}`)
+  }
+
+  async createMaterial(materialData: MaterialCreate): Promise<Material> {
+    return this.request<Material>('/materiales/', {
+      method: 'POST',
+      body: JSON.stringify(materialData),
+    })
+  }
+
+  async createMaterialWithImage(formData: FormData): Promise<SuccessResponse<Material>> {
+    console.log('📤 Subiendo material con imagen al backend...')
+    // No establecer Content-Type, el navegador lo hará automáticamente con boundary para FormData
+    return this.request<SuccessResponse<Material>>('/materiales/with-image', {
+      method: 'POST',
+      body: formData,
+    })
+  }
+
+  async updateMaterialImage(id: number, imageFile: File): Promise<SuccessResponse<Material>> {
+    const formData = new FormData()
+    formData.append('imagen', imageFile)
+    
+    console.log(`📤 Actualizando imagen del material ${id}...`)
+    return this.request<SuccessResponse<Material>>(`/materiales/${id}/imagen`, {
+      method: 'PUT',
+      body: formData,
+    })
+  }
+
+  async updateMaterial(id: number, materialData: MaterialUpdate): Promise<Material> {
+    return this.request<Material>(`/materiales/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(materialData),
+    })
+  }
+
+  async deleteMaterial(id: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/materiales/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // MaterialModelo3D endpoints
+  async assignMaterialToModelo3D(assignmentData: MaterialModelo3DCreate): Promise<MaterialModelo3D> {
+    return this.request<MaterialModelo3D>('/materiales-modelo3d/', {
+      method: 'POST',
+      body: JSON.stringify(assignmentData),
+    })
+  }
+
+  async getMaterialesModelo3D(modelo3dId: number): Promise<SuccessResponse<MaterialModelo3DResponse>> {
+    return this.request<SuccessResponse<MaterialModelo3DResponse>>(`/materiales-modelo3d/modelo3d/${modelo3dId}`)
+  }
+
+  async updateMaterialModelo3D(id: number, updateData: MaterialModelo3DUpdate): Promise<MaterialModelo3D> {
+    return this.request<MaterialModelo3D>(`/materiales-modelo3d/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    })
+  }
+
+  async deleteMaterialModelo3D(id: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/materiales-modelo3d/${id}`, {
+      method: 'DELETE',
+    })
   }
 }
 

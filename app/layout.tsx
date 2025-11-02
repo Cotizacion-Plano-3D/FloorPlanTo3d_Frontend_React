@@ -1,8 +1,9 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -10,7 +11,11 @@ export const metadata: Metadata = {
   description: 'Transforma tus planos arquitectónicos en modelos 3D detallados utilizando inteligencia artificial avanzada.',
   keywords: 'arquitectura, planos, 3D, IA, diseño, construcción',
   authors: [{ name: 'FloorPlan3D Team' }],
-  viewport: 'width=device-width, initial-scale=1',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({
@@ -33,6 +38,7 @@ html {
         <AuthProvider>
           {children}
         </AuthProvider>
+        <Toaster position="top-right" richColors />
         <Analytics />
       </body>
     </html>

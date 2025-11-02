@@ -27,7 +27,8 @@ import {
   ArrowRight,
   Crown,
   Star,
-  Check
+  Check,
+  Palette
 } from 'lucide-react'
 import MisPlanos from '@/components/mis-planos'
 import { format } from 'date-fns'
@@ -373,6 +374,13 @@ function ActiveSubscriptionDashboard({ onShowMisPlanos }: { onShowMisPlanos: () 
                       <Eye className="h-6 w-6" />
                       <span>Mis planos</span>
                     </Button>
+                    <Button 
+                      className="h-20 flex flex-col items-center justify-center gap-2"
+                      onClick={() => window.location.href = '/materiales'}
+                    >
+                      <Palette className="h-6 w-6" />
+                      <span>Materiales</span>
+                    </Button>
                     <Button className="h-20 flex flex-col items-center justify-center gap-2">
                       <Zap className="h-6 w-6" />
                       <span>Renderizado</span>
@@ -575,8 +583,8 @@ export function Dashboard() {
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-4">No estás autenticado</h2>
           <p className="text-muted-foreground mb-4">Por favor, inicia sesión para acceder al dashboard.</p>
-          <Button onClick={() => window.location.href = '/'}>
-            Ir al Inicio
+          <Button onClick={() => window.location.href = '/login'}>
+            Iniciar Sesión
           </Button>
         </div>
       </div>

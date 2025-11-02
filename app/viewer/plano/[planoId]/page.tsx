@@ -7,19 +7,39 @@ import Link from "next/link"
 import { FloorPlan3DViewer } from "@/components/floor-plan-3d-viewer"
 import { Card } from "@/components/ui/card"
 import { apiClient } from "@/lib/api"
+import { useAuth } from "@/contexts/AuthContext"
 import { Plano, Modelo3DDataResponse } from "@/types/api"
 import { toast } from "sonner"
 
 export default function PlanoViewerPage({ params }: { params: Promise<{ planoId: string }> }) {
   const { planoId } = use(params)
+  const { isAuthenticated, isLoading: authLoading, token } = useAuth()
   const [plano, setPlano] = useState<Plano | null>(null)
   const [modelo3dData, setModelo3dData] = useState<Modelo3DDataResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Sincronizar token con apiClient cuando cambie
   useEffect(() => {
+    if (token) {
+      apiClient.setToken(token)
+      console.log('🔑 Token configurado en apiClient para viewer')
+    }
+  }, [token])
+
+  useEffect(() => {
+    // Esperar a que termine la carga de autenticación
+    if (authLoading) return
+    
+    // Verificar autenticación antes de cargar datos
+    if (!isAuthenticated) {
+      setError('Debes iniciar sesión para ver este plano')
+      setLoading(false)
+      return
+    }
+
     loadPlanoData()
-  }, [planoId])
+  }, [planoId, isAuthenticated, authLoading])
 
   const loadPlanoData = async () => {
     try {
@@ -94,9 +114,21 @@ export default function PlanoViewerPage({ params }: { params: Promise<{ planoId:
             <AlertCircle className="w-16 h-16 text-destructive mx-auto" />
             <h2 className="text-2xl font-bold">Error</h2>
             <p className="text-muted-foreground">{error || 'Plano no encontrado'}</p>
-            <Button asChild>
-              <Link href="/dashboard">Volver al Dashboard</Link>
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button asChild variant="outline">
+                <Link href="/">Ir al Inicio</Link>
+              </Button>
+              {!isAuthenticated && (
+                <Button asChild>
+                  <Link href="/login">Iniciar Sesión</Link>
+                </Button>
+              )}
+              {isAuthenticated && (
+                <Button asChild>
+                  <Link href="/dashboard">Volver al Dashboard</Link>
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
       </div>
@@ -235,6 +267,8 @@ export default function PlanoViewerPage({ params }: { params: Promise<{ planoId:
               scene: modelo3dData.datos_json.scene,
               objects: modelo3dData.datos_json.objects
             }}
+            modelo3dId={plano.modelo3d?.id}
+            planoId={plano.id}
           />
         </Suspense>
 

@@ -65,6 +65,12 @@ export interface ApiError {
   detail: string
 }
 
+// Success response wrapper from FastAPI
+export interface SuccessResponse<T = any> {
+  message: string
+  data: T
+}
+
 // Pagination types
 export interface PaginatedResponse<T> {
   data: T[]
@@ -134,4 +140,100 @@ export interface PlanoListResponse {
 
 export interface Modelo3DDataResponse {
   datos_json: Record<string, any>
+}
+
+// Categoria types
+export interface Categoria {
+  id: number
+  codigo: string
+  nombre: string
+  descripcion?: string
+  imagen_url?: string
+  fecha_creacion: string
+  fecha_actualizacion: string
+}
+
+export interface CategoriaCreate {
+  codigo: string
+  nombre: string
+  descripcion?: string
+  imagen_url?: string
+}
+
+export interface CategoriaResponse {
+  categorias: Categoria[]
+  total: number
+}
+
+// Material types
+export interface Material {
+  id: number
+  codigo: string
+  nombre: string
+  descripcion?: string
+  precio_base: number
+  unidad_medida: string
+  imagen_url?: string
+  categoria_id: number
+  categoria?: Categoria
+  fecha_creacion: string
+  fecha_actualizacion: string
+}
+
+export interface MaterialCreate {
+  codigo: string
+  nombre: string
+  descripcion?: string
+  precio_base: number
+  unidad_medida: string
+  imagen_url?: string
+  categoria_id: number
+}
+
+export interface MaterialUpdate {
+  nombre?: string
+  descripcion?: string
+  precio_base?: number
+  unidad_medida?: string
+  imagen_url?: string
+  categoria_id?: number
+}
+
+export interface MaterialResponse {
+  materiales: Material[]
+  total: number
+  skip: number
+  limit: number
+}
+
+// MaterialModelo3D types
+export interface MaterialModelo3D {
+  id: number
+  modelo3d_id: number
+  material_id: number
+  cantidad: number
+  unidad_medida: string
+  precio_unitario: number
+  subtotal: number
+  material?: Material
+}
+
+export interface MaterialModelo3DCreate {
+  modelo3d_id: number
+  material_id: number
+  cantidad: number
+  unidad_medida: string
+  precio_unitario: number
+}
+
+export interface MaterialModelo3DUpdate {
+  cantidad?: number
+  precio_unitario?: number
+}
+
+export interface MaterialModelo3DResponse {
+  modelo3d_id: number
+  total_materiales: number
+  costo_total: number
+  materiales: MaterialModelo3D[]
 }

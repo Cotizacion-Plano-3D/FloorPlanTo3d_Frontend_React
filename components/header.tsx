@@ -8,11 +8,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Menu, User, LogOut } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/AuthContext"
-import { AuthModal } from "@/components/auth/AuthModal"
 
 export function Header() {
   const { isAuthenticated, user, logout } = useAuth()
-  const [showAuthModal, setShowAuthModal] = useState(false)
 
   const navItems = [
     { name: "Características", href: "#features-section" },
@@ -77,12 +75,11 @@ export function Header() {
                 </Button>
               </>
             ) : (
-              <Button 
-                onClick={() => setShowAuthModal(true)}
-                className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-full font-medium shadow-sm"
-              >
-                Iniciar Sesión
-              </Button>
+              <Link href="/login">
+                <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-full font-medium shadow-sm">
+                  Iniciar Sesión
+                </Button>
+              </Link>
             )}
             <Sheet>
               <SheetTrigger asChild className="md:hidden">
@@ -124,12 +121,11 @@ export function Header() {
                       </Button>
                     </>
                   ) : (
-                    <Button 
-                      onClick={() => setShowAuthModal(true)}
-                      className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-full font-medium shadow-sm w-full mt-4"
-                    >
-                      Iniciar Sesión
-                    </Button>
+                    <Link href="/login" className="w-full mt-4">
+                      <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-full font-medium shadow-sm w-full">
+                        Iniciar Sesión
+                      </Button>
+                    </Link>
                   )}
                 </nav>
               </SheetContent>
@@ -137,10 +133,6 @@ export function Header() {
           </div>
         </div>
       </header>
-      
-      {showAuthModal && (
-        <AuthModal onClose={() => setShowAuthModal(false)} />
-      )}
     </>
   )
 }
