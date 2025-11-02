@@ -1,7 +1,7 @@
 "use client"
 
-import { Canvas } from "@react-three/fiber"
-import { OrbitControls, PerspectiveCamera, Grid, ContactShadows } from "@react-three/drei"
+import { Canvas, useLoader } from "@react-three/fiber"
+import { OrbitControls, PerspectiveCamera, Grid, ContactShadows, useTexture } from "@react-three/drei"
 import { Suspense, useState, useEffect } from "react"
 import * as THREE from "three"
 import { ThreeJSObject, ThreeJSScene } from "@/lib/floorplan-api"
@@ -21,33 +21,93 @@ interface FloorPlan3DViewerProps {
   planoId?: number
 }
 
-// Componente para renderizar objetos 3D del backend
-function Object3D({ obj, textureUrl }: { obj: ThreeJSObject; textureUrl?: string }) {
+// Hook personalizado para cargar texturas con fallback
+function useTextureWithFallback(url?: string) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    if (textureUrl) {
-      const loader = new THREE.TextureLoader()
-      loader.load(
-        textureUrl,
-        (loadedTexture) => {
-          loadedTexture.wrapS = THREE.RepeatWrapping
-          loadedTexture.wrapT = THREE.RepeatWrapping
-          loadedTexture.repeat.set(1, 1)
-          setTexture(loadedTexture)
-        },
-        undefined,
-        (error) => {
-          console.error('Error cargando textura:', error)
-        }
-      )
+    if (!url) {
+      setTexture(null)
+      return
     }
-  }, [textureUrl])
+
+    setIsLoading(true)
+    setError(null)
+
+    const loader = new THREE.TextureLoader()
+    
+    loader.load(
+      url,
+      (loadedTexture) => {
+        loadedTexture.wrapS = THREE.RepeatWrapping
+        loadedTexture.wrapT = THREE.RepeatWrapping
+        loadedTexture.repeat.set(2, 2)
+        loadedTexture.needsUpdate = true
+        
+        setTexture(loadedTexture)
+        setIsLoading(false)
+    
+      },
+      undefined,
+      (err) => {
+        console.error(`❌ Error cargando textura:`, err, url)
+        setError(err as Error)
+        setIsLoading(false)
+      }
+    )
+  }, [url])
+
+  return { texture, isLoading, error }
+}
+
+// Texturas por defecto para cada tipo de elemento
+const DEFAULT_TEXTURES = {
+  wall: "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/concrete_floor_03/concrete_floor_03_diff_2k.png",
+  window: "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/glass_01/glass_01_diff_2k.png",
+  door: "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/wooden_planks_02/wooden_planks_02_diff_2k.png",
+  floor: "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/ceramic_tiles_03/ceramic_tiles_03_diff_2k.png",
+  ceiling: "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/painted_plaster_01/painted_plaster_01_diff_2k.png"
+} as const
+
+// Componente para renderizar objetos 3D del backend
+function Object3D({ obj, textureUrl }: { obj: ThreeJSObject; textureUrl?: string }) {
+  // Si no hay textura específica, usar la textura por defecto según el tipo
+  const effectiveTextureUrl = textureUrl || DEFAULT_TEXTURES[obj.type as keyof typeof DEFAULT_TEXTURES] || DEFAULT_TEXTURES.wall
+  
+  // Cargar textura del objeto (ventana, puerta, o pared)
+  const { texture, isLoading, error } = useTextureWithFallback(effectiveTextureUrl)
+  
+  // Cargar TAMBIÉN la textura de pared para usar en secciones de pared dentro de ventanas/puertas
+  const wallTextureUrl = obj.type !== 'wall' ? (textureUrl || DEFAULT_TEXTURES.wall) : undefined
+  const { texture: wallTexture, isLoading: wallIsLoading } = useTextureWithFallback(wallTextureUrl)
+  
+
+  // Log del estado de carga
+  useEffect(() => {
+    console.log(`📊 Texture state [${obj.type}] ${obj.id}:`, {
+      hasTexture: !!texture,
+      isLoading,
+      hasError: !!error
+    })
+  }, [obj.type, obj.id, texture, isLoading, error])
+
+  // Solo loggear errores
+    useEffect(() => {
+    if (error) {
+      console.error(`❌ Error en Object3D [${obj.type}] ${obj.id}:`, {
+        message: error?.message || 'Error desconocido',
+        url: effectiveTextureUrl,
+        stack: error?.stack
+      })
+    }
+  }, [obj.type, obj.id, error, effectiveTextureUrl])
 
   const getColor = (type: string) => {
     switch (type) {
       case 'wall':
-        return '#FFFFFF' // blanco claro para paredes
+        return 'red' // Gris muy claro (más visible que blanco puro)
       case 'window':
         return '#87CEEB' // Azul cielo para ventanas
       case 'door':
@@ -70,23 +130,39 @@ function Object3D({ obj, textureUrl }: { obj: ThreeJSObject; textureUrl?: string
     }
   }
 
-  const createMaterial = (type: string, useTexture: boolean = true) => {
-    if (useTexture && texture && type === 'wall') {
+  const createMaterial = (type: string, shouldUseTexture: boolean = true) => {
+
+    // Para el objeto en sí (ventana/puerta), usar texture
+    const materialTexture = type === 'wall' ? wallTexture : texture
+    const materialIsLoading = type === 'wall' ? wallIsLoading : isLoading
+    const hasTexture = materialTexture && !materialIsLoading
+    
+    
+    // Si hay textura y debe usarse, aplicarla SIEMPRE
+    if (shouldUseTexture && hasTexture) {
+
       return (
         <meshStandardMaterial
-          map={texture}
+          key={materialTexture.uuid} // Key única para forzar re-render cuando cambie la textura
+          map={materialTexture}
+          color="white" // Color base blanco para que la textura se vea correcta
           roughness={0.7}
-          metalness={0.2}
+          metalness={0.0} // Sin metalness para texturas normales
+          side={THREE.DoubleSide} // Ambas caras para que se vea desde cualquier ángulo
+          toneMapped={true}
         />
       )
     }
+    
+
     return (
       <meshStandardMaterial
         color={getColor(type)}
-        transparent={type !== 'wall'}
+        transparent={type === 'window'}
         opacity={getOpacity(type)}
         roughness={0.7}
         metalness={0.2}
+        side={THREE.DoubleSide}
       />
     )
   }
@@ -104,7 +180,7 @@ function Object3D({ obj, textureUrl }: { obj: ThreeJSObject; textureUrl?: string
     const topWallY = baseY + bottomWallHeight + windowHeight + (topWallHeight / 2)
 
     return (
-      <group position={[obj.position.x, 0, obj.position.z]} rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}>
+      <group key={`${obj.id}_${texture?.uuid || 'no-texture'}`} position={[obj.position.x, 0, obj.position.z]} rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}>
         {/* Pared inferior */}
         <mesh position={[0, bottomWallY, 0]} castShadow receiveShadow>
           <boxGeometry args={[obj.dimensions.width, bottomWallHeight, obj.dimensions.depth]} />
@@ -129,15 +205,15 @@ function Object3D({ obj, textureUrl }: { obj: ThreeJSObject; textureUrl?: string
   // Renderizado especial para puertas
   if (obj.type === 'door') {
     const wallHeight = obj.dimensions.height
-    const doorHeight = wallHeight * 0.90
-    const topWallHeight = 1.2
+    const doorHeight = wallHeight * 0.9
+    const topWallHeight = 1.1
 
     const baseY = obj.position.y - (wallHeight / 2)
     const doorY = baseY + (doorHeight / 2)
     const topWallY = baseY + doorHeight + (topWallHeight / 2)
 
     return (
-      <group position={[obj.position.x, 0, obj.position.z]} rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}>
+      <group key={`${obj.id}_${texture?.uuid || 'no-texture'}_${wallTexture?.uuid || 'no-wall'}`} position={[obj.position.x, 0, obj.position.z]} rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}>
         {/* Puerta */}
         <mesh position={[0, doorY, 0]} castShadow receiveShadow>
           <boxGeometry args={[obj.dimensions.width, doorHeight, obj.dimensions.depth]} />
@@ -158,12 +234,15 @@ function Object3D({ obj, textureUrl }: { obj: ThreeJSObject; textureUrl?: string
   // Renderizado normal para otros objetos
   return (
     <mesh
+      key={`${obj.id}_${texture?.uuid || 'no-texture'}_${wallTexture?.uuid || 'no-wall'}`}
       position={[obj.position.x, obj.position.y, obj.position.z]}
       rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
       castShadow
       receiveShadow
     >
       <boxGeometry args={[obj.dimensions.width, obj.dimensions.height, obj.dimensions.depth]} />
+      {/* Forzar re-render cuando texture cambia */}
+     
       {createMaterial(obj.type)}
     </mesh>
   )
@@ -179,16 +258,59 @@ function FloorPlan3DModel({
   sceneData?: { scene: ThreeJSScene; objects: ThreeJSObject[] }
   textureAssignments: TextureAssignment[]
 }) {
+  const [floorTexture, setFloorTexture] = useState<THREE.Texture | null>(null)
+  const [ceilingTexture, setCeilingTexture] = useState<THREE.Texture | null>(null)
+
   // Función helper para obtener la textura según el tipo de elemento
   const getTextureForElement = (type: string): string | undefined => {
     const assignment = textureAssignments.find(a => a.elementType === type)
-    return assignment?.material?.imagen_url
+    const textureUrl = assignment?.material?.imagen_url
+    
+    
+    return textureUrl
   }
+
+  // Cargar texturas de piso y techo
+  useEffect(() => {
+    const floorUrl = getTextureForElement('floor')
+    const ceilingUrl = getTextureForElement('ceiling')
+
+    if (floorUrl) {
+      const loader = new THREE.TextureLoader()
+      loader.load(floorUrl, (texture) => {
+        texture.wrapS = THREE.RepeatWrapping
+        texture.wrapT = THREE.RepeatWrapping
+        texture.repeat.set(4, 4)
+        texture.needsUpdate = true
+        setFloorTexture(texture)
+  
+      }, undefined, (error) => {
+        console.error('❌ Error cargando textura de piso:', error)
+      })
+    } else {
+      setFloorTexture(null)
+    }
+
+    if (ceilingUrl) {
+      const loader = new THREE.TextureLoader()
+      loader.load(ceilingUrl, (texture) => {
+        texture.wrapS = THREE.RepeatWrapping
+        texture.wrapT = THREE.RepeatWrapping
+        texture.repeat.set(4, 4)
+        texture.needsUpdate = true
+        setCeilingTexture(texture)
+   
+      }, undefined, (error) => {
+        console.error('❌ Error cargando textura de techo:', error)
+      })
+    } else {
+      setCeilingTexture(null)
+    }
+  }, [textureAssignments])
 
   // Si tenemos datos del backend, renderizar esos objetos
   if (sceneData && sceneData.objects.length > 0) {
     const { scene, objects } = sceneData
-    const floorTexture = getTextureForElement('floor')
     
     return (
       <group>
@@ -197,17 +319,40 @@ function FloorPlan3DModel({
           <planeGeometry args={[scene.bounds.width * 1.2, scene.bounds.height * 1.2]} />
           {floorTexture ? (
             <meshStandardMaterial 
-              map={new THREE.TextureLoader().load(floorTexture)} 
+              map={floorTexture} 
               roughness={0.9} 
-              metalness={0.1} 
+              metalness={0.1}
+              side={THREE.DoubleSide}
             />
           ) : (
-            <meshStandardMaterial color="#048F0B" roughness={0.9} metalness={0.1} />
+            <meshStandardMaterial 
+              color="#048F0B" 
+              roughness={0.9} 
+              metalness={0.1}
+              side={THREE.DoubleSide}
+            />
           )}
         </mesh>
 
+        {/* Techo opcional */}
+        {ceilingTexture && (
+          <mesh 
+            rotation={[-Math.PI / 2, 0, 0]} 
+            position={[scene.bounds.width / 2, 3, scene.bounds.height / 2]}
+          >
+            <planeGeometry args={[scene.bounds.width * 1.2, scene.bounds.height * 1.2]} />
+            <meshStandardMaterial 
+              map={ceilingTexture} 
+              roughness={0.8} 
+              metalness={0.1}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        )}
+
         {/* Renderizar todos los objetos detectados con sus texturas */}
         {objects.map((obj, index) => {
+          console.log('🔍 Procesando objeto:', obj)
           const textureUrl = getTextureForElement(obj.type as ElementType)
           return <Object3D key={`${obj.id}_${index}`} obj={obj} textureUrl={textureUrl} />
         })}
@@ -278,15 +423,12 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
     try {
       const response = await apiClient.getMaterialesModelo3D(modelo3dId)
       
-      // El backend devuelve un SuccessResponse: {message, data: {materiales: [...], ...}}
+      // El backend devuelve un SuccessResponse: {success, message, data: {materiales: [...], ...}}
       let materiales = []
       
       if (response?.data?.materiales) {
         // Estructura: {message, data: {materiales}}
         materiales = response.data.materiales
-      } else if (response?.materiales) {
-        // Estructura directa: {materiales}
-        materiales = response.materiales
       } else {
         console.warn('Respuesta inesperada del servidor:', response)
         setTextureAssignments([])
@@ -303,6 +445,7 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
           material: ma.material || null
         }))
       
+    
       setTextureAssignments(assignments)
     } catch (error) {
       console.error('Error cargando asignaciones de texturas:', error)
@@ -312,19 +455,31 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
   }
 
   const handleApplyTexture = (elementType: ElementType, material: Material, elementId?: string) => {
+  
+
     setTextureAssignments(prev => {
       const existing = prev.find(a => a.elementType === elementType && a.elementId === elementId)
+      
+      let newAssignments
       if (existing) {
-        return prev.map(a => 
+        // Actualizar asignación existente
+        newAssignments = prev.map(a => 
           a.elementType === elementType && a.elementId === elementId
             ? { ...a, material }
             : a
         )
+      
+      } else {
+        // Agregar nueva asignación
+        newAssignments = [...prev, { elementType, elementId, material }]
+    
       }
-      return [...prev, { elementType, elementId, material }]
+
+    
+      return newAssignments
     })
 
-    setSaveMessage({ type: 'success', text: `Textura aplicada a ${elementType}` })
+    setSaveMessage({ type: 'success', text: `✓ Textura aplicada a ${elementType}` })
     setTimeout(() => setSaveMessage(null), 3000)
   }
 
@@ -393,11 +548,11 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
             maxPolarAngle={Math.PI / 2.1}
           />
 
-          {/* Lighting */}
-          <ambientLight intensity={0.5} />
+          {/* Lighting - Aumentado para mejor visibilidad de texturas */}
+          <ambientLight intensity={0.7} />
           <directionalLight
             position={[10, 10, 5]}
-            intensity={1.2}
+            intensity={1.5}
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
@@ -406,8 +561,9 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
             shadow-camera-top={20}
             shadow-camera-bottom={-20}
           />
-          <directionalLight position={[-5, 5, -5]} intensity={0.4} />
-          <pointLight position={[0, 8, 0]} intensity={0.6} color="#CBDF90" />
+          <directionalLight position={[-5, 5, -5]} intensity={0.6} />
+          <pointLight position={[0, 8, 0]} intensity={0.8} color="#CBDF90" />
+          <hemisphereLight args={['blue', '#444444', 0.4]} />
 
           {/* 3D Model */}
           <FloorPlan3DModel 
