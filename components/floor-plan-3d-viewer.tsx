@@ -1,7 +1,7 @@
 "use client"
 
 import { Canvas, useLoader } from "@react-three/fiber"
-import { OrbitControls, PerspectiveCamera, Grid, ContactShadows, useTexture } from "@react-three/drei"
+import { OrbitControls, PerspectiveCamera, Grid, ContactShadows, useTexture, Text } from "@react-three/drei"
 import { Suspense, useState, useEffect } from "react"
 import * as THREE from "three"
 import { ThreeJSObject, ThreeJSScene } from "@/lib/floorplan-api"
@@ -9,16 +9,32 @@ import { TexturePanel, ElementType, TextureAssignment } from "@/components/textu
 import { Material, MaterialModelo3DCreate } from "@/types/api"
 import { apiClient } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Paintbrush, Save, AlertCircle } from "lucide-react"
+import { Paintbrush, Save, AlertCircle, Ruler } from "lucide-react"
+import { DimensionEditorPanel } from "@/components/dimension-editor/DimensionEditorPanel"
+import { useDimensionEditor } from "@/components/dimension-editor/useDimensionEditor"
+
+interface IntersectionPoint {
+  id: number
+  x: number
+  y: number
+  z: number
+  type: 'intersection' | 'corner'
+}
 
 interface FloorPlan3DViewerProps {
   imageUrl?: string
   sceneData?: {
     scene: ThreeJSScene
     objects: ThreeJSObject[]
+    intersections?: IntersectionPoint[]
+    camera?: {
+      position: { x: number; y: number; z: number }
+      target: { x: number; y: number; z: number }
+    }
   }
   modelo3dId?: number
   planoId?: number
+  showIntersections?: boolean
 }
 
 // Hook personalizado para cargar texturas con fallback
@@ -72,7 +88,26 @@ const DEFAULT_TEXTURES = {
 } as const
 
 // Componente para renderizar objetos 3D del backend
-function Object3D({ obj, textureUrl, wallTextureUrl }: { obj: ThreeJSObject; textureUrl?: string; wallTextureUrl?: string }) {
+function Object3D({ 
+  obj, 
+  textureUrl, 
+  wallTextureUrl,
+  effectiveDimensions,
+  isSelected,
+  onSelect
+}: { 
+  obj: ThreeJSObject
+  textureUrl?: string
+  wallTextureUrl?: string
+  effectiveDimensions: {
+    width: number
+    height: number
+    depth: number
+    position: { x: number; y: number; z: number }
+  }
+  isSelected?: boolean
+  onSelect?: () => void
+}) {
   // Si no hay textura específica, usar la textura por defecto según el tipo
   const effectiveTextureUrl = textureUrl || DEFAULT_TEXTURES[obj.type as keyof typeof DEFAULT_TEXTURES] || DEFAULT_TEXTURES.wall
   
@@ -107,35 +142,70 @@ function Object3D({ obj, textureUrl, wallTextureUrl }: { obj: ThreeJSObject; tex
   const getColor = (type: string) => {
     switch (type) {
       case 'wall':
-        return 'red' // Gris muy claro (más visible que blanco puro)
+        return '#E8E8E8' // Gris claro profesional (corregido de 'red')
       case 'window':
-        return '#87CEEB' // Azul cielo para ventanas
+        return '#B0E0E6' // Azul cielo suave para ventanas
       case 'door':
-        return '#DEB887' // Beige para puertas
+        return '#D2B48C' // Beige cálido para puertas
       default:
-        return  'white' //'#CCCCCC'
+        return '#F5F5F5' // Blanco suave
     }
   }
 
   const getOpacity = (type: string) => {
     switch (type) {
       case 'wall':
-        return 0.9
+        return 1.0 // Paredes completamente opacas
       case 'window':
-        return 0.3
+        return 0.25 // Ventanas más transparentes para efecto de vidrio
       case 'door':
         return 1.0
       default:
-        return 0.5
+        return 0.8
+    }
+  }
+
+  const getRoughness = (type: string) => {
+    switch (type) {
+      case 'wall':
+        return 0.8 // Paredes con superficie mate
+      case 'window':
+        return 0.1 // Ventanas más reflectantes
+      case 'door':
+        return 0.6 // Puertas semi-mate
+      default:
+        return 0.7
+    }
+  }
+
+  const getMetalness = (type: string) => {
+    switch (type) {
+      case 'wall':
+        return 0.0 // Paredes no metálicas
+      case 'window':
+        return 0.1 // Ventanas ligeramente metálicas
+      case 'door':
+        return 0.0
+      default:
+        return 0.0
     }
   }
 
   // 🔧 Helper para crear materiales con soporte para textura de pared y de objeto
-  const createMaterial = (materialType: 'object' | 'wall') => {
+  const createMaterial = (materialType: 'object' | 'wall', highlight = false) => {
     // Si es 'wall', usar wallTexture; si es 'object', usar texture
     const targetTexture = materialType === 'wall' ? wallTexture : texture
     const targetIsLoading = materialType === 'wall' ? wallIsLoading : isLoading
     const hasTexture = targetTexture && !targetIsLoading
+    
+    // Determinar el tipo de material base para las propiedades (roughness, metalness, etc.)
+    // Si es 'wall', usar propiedades de pared; si es 'object', usar propiedades del objeto actual
+    const materialBaseType = materialType === 'wall' ? 'wall' : obj.type
+    
+    // Color base: si está seleccionado, usar amarillo; si no, usar el color normal
+    const baseColor = highlight ? '#FFD700' : (hasTexture ? 'white' : getColor(materialBaseType))
+    const emissiveColor = highlight ? '#FFD700' : undefined
+    const emissiveIntensity = highlight ? 0.3 : 0
     
     // Si hay textura cargada, aplicarla
     if (hasTexture) {
@@ -143,61 +213,158 @@ function Object3D({ obj, textureUrl, wallTextureUrl }: { obj: ThreeJSObject; tex
         <meshStandardMaterial
           key={targetTexture.uuid} // Key única para forzar re-render cuando cambie la textura
           map={targetTexture}
-          color="white" // Color base blanco para que la textura se vea correcta
-          roughness={0.7}
-          metalness={0.0} // Sin metalness para texturas normales
+          color={baseColor} // Color base (blanco para textura, amarillo si seleccionado)
+          emissive={emissiveColor}
+          emissiveIntensity={emissiveIntensity}
+          roughness={getRoughness(materialBaseType)}
+          metalness={getMetalness(materialBaseType)}
           side={THREE.DoubleSide} // Ambas caras para que se vea desde cualquier ángulo
           toneMapped={true}
+          envMapIntensity={materialBaseType === 'window' ? 1.5 : 0.8}
         />
       )
     }
     
-    // Fallback a color sólido
+    // Fallback a color sólido con propiedades mejoradas
     return (
       <meshStandardMaterial
-        color={getColor(obj.type)}
-        transparent={obj.type === 'window'}
-        opacity={getOpacity(obj.type)}
-        roughness={0.7}
-        metalness={0.2}
+        color={baseColor}
+        emissive={emissiveColor}
+        emissiveIntensity={emissiveIntensity}
+        transparent={materialBaseType === 'window'}
+        opacity={getOpacity(materialBaseType)}
+        roughness={getRoughness(materialBaseType)}
+        metalness={getMetalness(materialBaseType)}
         side={THREE.DoubleSide}
+        envMapIntensity={materialBaseType === 'window' ? 1.5 : 0.5} // Ventanas más reflectantes
       />
     )
   }
 
+  // Usar dimensiones efectivas (modificadas o originales)
+  const dimensions = effectiveDimensions
+  const position = effectiveDimensions.position
+
   // Renderizado especial para ventanas
   if (obj.type === 'window') {
-    const wallHeight = obj.dimensions.height
-    const bottomWallHeight = wallHeight * 0.70
-    const windowHeight = wallHeight * 0.80
-    const topWallHeight = wallHeight * 0.50
+    // CORRECCIÓN: Las ventanas están dentro de paredes completas de tipo WALL
+    // Asumir altura estándar de pared: 3.0m (igual que las paredes normales)
+    const STANDARD_WALL_HEIGHT = 3.0
     
-    const baseY = obj.position.y - (wallHeight / 2)
-    const bottomWallY = baseY + (bottomWallHeight / 2)
-    const windowY = baseY + bottomWallHeight + (windowHeight / 2)
-    const topWallY = baseY + bottomWallHeight + windowHeight + (topWallHeight / 2)
+    // La ventana usa 100% de su altura definida (no se divide)
+    const windowHeight = dimensions.height // Ej: 1.5m (100% de la altura de la ventana)
+    
+    // La posición Y del backend puede estar basada en height/2 de la ventana
+    // Necesitamos calcular dónde está realmente la ventana dentro de la pared de 3.0m
+    // Si position.y es muy bajo, asumir que la ventana está a una altura típica
+    let windowCenterY = position.y
+    
+    // Si la ventana está muy cerca del suelo (menos de 1.0m), 
+    // asumir que debería estar centrada verticalmente en la pared o a altura típica
+    if (windowCenterY < 1.0) {
+      // Ventana típica: base a 0.8m, centro a 1.55m (0.8 + 1.5/2)
+      // O centrada en la pared: 3.0/2 = 1.5m
+      windowCenterY = STANDARD_WALL_HEIGHT / 2 // Centrada en la pared de 3.0m
+    }
+    
+    // Calcular límites de la ventana
+    const windowBottomY = windowCenterY - (windowHeight / 2) // Base de la ventana
+    const windowTopY = windowCenterY + (windowHeight / 2) // Top de la ventana
+    
+    // Asegurar que la ventana esté dentro de los límites de la pared
+    const wallBaseY = 0 // Base de la pared completa
+    const wallTopY = STANDARD_WALL_HEIGHT // Top de la pared completa (3.0m)
+    
+    // Pared inferior: desde la base de la pared (0m) hasta la base de la ventana
+    // Esta es una PARED COMPLETA de tipo WALL
+    const bottomWallHeight = Math.max(windowBottomY - wallBaseY, 0.1) // Mínimo 0.1m
+    const bottomWallY = wallBaseY + (bottomWallHeight / 2)
+    
+    // Pared superior (dintel): desde el top de la ventana hasta el top de la pared (3.0m)
+    // Esta es una PARED COMPLETA de tipo WALL
+    const topWallHeight = Math.max(wallTopY - windowTopY, 0.1) // Mínimo 0.1m
+    const topWallY = windowTopY + (topWallHeight / 2)
+    
+    // Hacer las paredes superior e inferior más anchas (efecto de marco de ventana)
+    const wallExtensionFactor = 1.1 // Extender 30% más que la ventana
+    const bottomWallWidth = dimensions.width * wallExtensionFactor
+    const bottomWallDepth = dimensions.depth * wallExtensionFactor
+    const topWallWidth = dimensions.width * wallExtensionFactor
+    const topWallDepth = dimensions.depth * wallExtensionFactor
+    
+    // Validar que las alturas sumen correctamente
+    const totalHeight = bottomWallHeight + windowHeight + topWallHeight
+    if (Math.abs(totalHeight - STANDARD_WALL_HEIGHT) > 0.01) {
+      // Ajustar si hay pequeñas discrepancias por redondeo
+      const adjustment = STANDARD_WALL_HEIGHT - totalHeight
+      if (topWallHeight > bottomWallHeight) {
+        // Ajustar la pared superior
+        const adjustedTopHeight = topWallHeight + adjustment
+        const adjustedTopY = windowTopY + (adjustedTopHeight / 2)
+        // Usar valores ajustados
+        return (
+          <group 
+            key={`${obj.id}_${texture?.uuid || 'no-tex'}_${wallTexture?.uuid || 'no-wall'}`} 
+            position={[position.x, 0, position.z]} 
+            rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
+            onClick={onSelect ? (e) => { 
+              e.stopPropagation(); 
+              onSelect(); 
+            } : undefined}
+            onPointerOver={onSelect ? (e) => {
+              e.stopPropagation();
+              document.body.style.cursor = 'pointer';
+            } : undefined}
+            onPointerOut={onSelect ? () => {
+              document.body.style.cursor = 'default';
+            } : undefined}
+          >
+            {/* ✅ Pared inferior - PARED COMPLETA de tipo WALL (más ancha) */}
+            <mesh position={[0, bottomWallY, 0]} receiveShadow>
+              <boxGeometry args={[bottomWallWidth, bottomWallHeight, bottomWallDepth]} />
+              {createMaterial('wall')}
+            </mesh>
+
+            {/* 🪟 Ventana transparente - USA 100% DE SU ALTURA */}
+            <mesh position={[0, windowCenterY, 0]} receiveShadow>
+              <boxGeometry args={[dimensions.width, windowHeight, dimensions.depth]} />
+              {createMaterial('object', isSelected)}
+            </mesh>
+
+            {/* ✅ Pared superior (dintel) - PARED COMPLETA de tipo WALL (más ancha) */}
+            <mesh position={[0, adjustedTopY, 0]} receiveShadow>
+              <boxGeometry args={[topWallWidth, adjustedTopHeight, topWallDepth]} />
+              {createMaterial('wall')}
+            </mesh>
+          </group>
+        )
+      }
+    }
 
     return (
       <group 
         key={`${obj.id}_${texture?.uuid || 'no-tex'}_${wallTexture?.uuid || 'no-wall'}`} 
-        position={[obj.position.x, 0, obj.position.z]} 
+        position={[position.x, 0, position.z]} 
         rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
+        onClick={onSelect ? (e) => { e.stopPropagation(); onSelect() } : undefined}
+        onPointerOver={onSelect ? () => document.body.style.cursor = 'pointer' : undefined}
+        onPointerOut={onSelect ? () => document.body.style.cursor = 'default' : undefined}
       >
-        {/* ✅ Pared inferior - USA TEXTURA DE PARED */}
-        <mesh position={[0, bottomWallY, 0]} castShadow receiveShadow>
-          <boxGeometry args={[obj.dimensions.width, bottomWallHeight, obj.dimensions.depth]} />
+        {/* ✅ Pared inferior - PARED COMPLETA de tipo WALL (más ancha) */}
+        <mesh position={[0, bottomWallY, 0]} receiveShadow>
+          <boxGeometry args={[bottomWallWidth, bottomWallHeight, bottomWallDepth]} />
           {createMaterial('wall')}
         </mesh>
 
-        {/* 🪟 Ventana transparente - USA TEXTURA DE VENTANA */}
-        <mesh position={[0, windowY, 0]} castShadow receiveShadow>
-          <boxGeometry args={[obj.dimensions.width, windowHeight, obj.dimensions.depth]} />
-          {createMaterial('object')}
+        {/* 🪟 Ventana transparente - USA 100% DE SU ALTURA */}
+        <mesh position={[0, windowCenterY, 0]} receiveShadow>
+          <boxGeometry args={[dimensions.width, windowHeight, dimensions.depth]} />
+          {createMaterial('object', isSelected)}
         </mesh>
 
-        {/* ✅ Pared superior - USA TEXTURA DE PARED */}
-        <mesh position={[0, topWallY, 0]} castShadow receiveShadow>
-          <boxGeometry args={[obj.dimensions.width, topWallHeight, obj.dimensions.depth]} />
+        {/* ✅ Pared superior (dintel) - PARED COMPLETA de tipo WALL (más ancha) */}
+        <mesh position={[0, topWallY, 0]} receiveShadow>
+          <boxGeometry args={[topWallWidth, topWallHeight, topWallDepth]} />
           {createMaterial('wall')}
         </mesh>
       </group>
@@ -206,30 +373,44 @@ function Object3D({ obj, textureUrl, wallTextureUrl }: { obj: ThreeJSObject; tex
 
   // Renderizado especial para puertas
   if (obj.type === 'door') {
-    const wallHeight = obj.dimensions.height
+    const wallHeight = dimensions.height
     const doorHeight = wallHeight * 0.9
-    const topWallHeight = 1.1
+    const topWallHeight = 1.2
 
-    const baseY = obj.position.y - (wallHeight / 2)
+    const baseY = position.y - (wallHeight / 2)
     const doorY = baseY + (doorHeight / 2)
     const topWallY = baseY + doorHeight + (topWallHeight / 2)
+
+    // Hacer la puerta más ancha (factor de ampliación)
+    const doorWidthFactor = 1.25 // Ampliar 15% el ancho de la puerta (ajustable)
+    const doorDepthFactor = 1.15 // Ampliar 15% la profundidad de la puerta (ajustable)
+    const doorWidth = dimensions.width * doorWidthFactor
+    const doorDepth = dimensions.depth * doorDepthFactor
+
+    // Hacer el dintel superior más ancho (efecto de marco de puerta)
+    const topWallExtensionFactor = 1.0 // Extender 20% más que la puerta (ajustable)
+    const topWallWidth = doorWidth * topWallExtensionFactor // Basado en la puerta ampliada
+    const topWallDepth = doorDepth * topWallExtensionFactor // Basado en la puerta ampliada
 
     return (
       <group 
         key={`${obj.id}_${texture?.uuid || 'no-tex'}_${wallTexture?.uuid || 'no-wall'}`} 
-        position={[obj.position.x, 0, obj.position.z]} 
+        position={[position.x, 0, position.z]} 
         rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
+        onClick={onSelect ? (e) => { e.stopPropagation(); onSelect() } : undefined}
+        onPointerOver={onSelect ? () => document.body.style.cursor = 'pointer' : undefined}
+        onPointerOut={onSelect ? () => document.body.style.cursor = 'default' : undefined}
       >
-        {/* 🚪 Puerta - USA TEXTURA DE PUERTA */}
-        <mesh position={[0, doorY, 0]} castShadow receiveShadow>
-          <boxGeometry args={[obj.dimensions.width, doorHeight, obj.dimensions.depth]} />
-          {createMaterial('object')}
+        {/* 🚪 Puerta - USA TEXTURA DE PUERTA (más ancha) */}
+        <mesh position={[0, doorY, 0]} receiveShadow>
+          <boxGeometry args={[doorWidth, doorHeight, doorDepth]} />
+          {createMaterial('object', isSelected)}
         </mesh>
 
-        {/* ✅ Dintel superior - USA TEXTURA DE PARED */}
+        {/* ✅ Dintel superior - PARED COMPLETA de tipo WALL (más ancha) */}
         {topWallHeight > 0 && (
-          <mesh position={[0, topWallY, 0]} castShadow receiveShadow>
-            <boxGeometry args={[obj.dimensions.width, topWallHeight, obj.dimensions.depth]} />
+          <mesh position={[0, topWallY, 0]} receiveShadow>
+            <boxGeometry args={[topWallWidth, topWallHeight, topWallDepth]} />
             {createMaterial('wall')}
           </mesh>
         )}
@@ -241,14 +422,75 @@ function Object3D({ obj, textureUrl, wallTextureUrl }: { obj: ThreeJSObject; tex
   return (
     <mesh
       key={`${obj.id}_${texture?.uuid || 'no-tex'}_${wallTexture?.uuid || 'no-wall'}`}
-      position={[obj.position.x, obj.position.y, obj.position.z]}
+      position={[position.x, position.y, position.z]}
       rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
-      castShadow
       receiveShadow
+      onClick={onSelect ? (e) => { 
+        e.stopPropagation(); 
+        onSelect(); 
+      } : undefined}
+      onPointerOver={onSelect ? (e) => {
+        e.stopPropagation();
+        document.body.style.cursor = 'pointer';
+      } : undefined}
+      onPointerOut={onSelect ? () => {
+        document.body.style.cursor = 'default';
+      } : undefined}
     >
-      <boxGeometry args={[obj.dimensions.width, obj.dimensions.height, obj.dimensions.depth]} />
-      {createMaterial('object')}
+      <boxGeometry args={[dimensions.width, dimensions.height, dimensions.depth]} />
+      {createMaterial('object', isSelected)}
     </mesh>
+  )
+}
+
+// Componente para renderizar un punto de intersección
+function IntersectionMarker({ point }: { point: IntersectionPoint }) {
+  // Colores más distintivos
+  const isIntersection = point.type === 'intersection'
+  const sphereColor = isIntersection ? '#FF6B35' : '#4ECDC4' // Naranja para intersecciones, Turquesa para esquinas
+  const emissiveColor = isIntersection ? '#FF4500' : '#00CED1' // Naranja brillante vs Turquesa brillante
+  const textColor = isIntersection ? '#FFFFFF' : '#000000' // Blanco para naranja, negro para turquesa
+  
+  // Tamaño y posición más realistas
+  const sphereRadius = 0.12 // Tamaño moderado
+  const heightAboveGround = 0.15 // 15cm sobre el suelo (altura razonable)
+  const sphereCenterY = point.y + heightAboveGround + sphereRadius // Centro de la esfera
+  
+  return (
+    <group position={[point.x, sphereCenterY, point.z]}>
+      {/* Esfera marcadora */}
+      <mesh castShadow>
+        <sphereGeometry args={[sphereRadius, 16, 16]} />
+        <meshStandardMaterial 
+          color={sphereColor}
+          emissive={emissiveColor}
+          emissiveIntensity={0.3}
+          roughness={0.4}
+          metalness={0.1}
+        />
+      </mesh>
+      {/* Texto con el número */}
+      <Text
+        position={[0, sphereRadius + 0.15, 0]}
+        fontSize={0.15}
+        color={textColor}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.015}
+        outlineColor={isIntersection ? "#000000" : "#FFFFFF"}
+      >
+        {point.id}
+      </Text>
+      {/* Línea vertical sutil que conecta con el suelo */}
+      <mesh position={[0, -sphereRadius - (heightAboveGround / 2), 0]}>
+        <cylinderGeometry args={[0.015, 0.015, heightAboveGround, 8]} />
+        <meshStandardMaterial 
+          color={sphereColor} 
+          opacity={0.6}
+          transparent
+        />
+      </mesh>
+    </group>
   )
 }
 
@@ -256,11 +498,24 @@ function Object3D({ obj, textureUrl, wallTextureUrl }: { obj: ThreeJSObject; tex
 function FloorPlan3DModel({ 
   imageUrl, 
   sceneData,
-  textureAssignments
+  textureAssignments,
+  showIntersections = true,
+  getEffectiveDimensions,
+  selectedObjectId,
+  onObjectSelect
 }: { 
   imageUrl?: string
-  sceneData?: { scene: ThreeJSScene; objects: ThreeJSObject[] }
+  sceneData?: { scene: ThreeJSScene; objects: ThreeJSObject[]; intersections?: IntersectionPoint[] }
   textureAssignments: TextureAssignment[]
+  showIntersections?: boolean
+  getEffectiveDimensions: (obj: ThreeJSObject) => {
+    width: number
+    height: number
+    depth: number
+    position: { x: number; y: number; z: number }
+  }
+  selectedObjectId?: string | number | null
+  onObjectSelect?: (obj: ThreeJSObject) => void
 }) {
   const [floorTexture, setFloorTexture] = useState<THREE.Texture | null>(null)
   const [ceilingTexture, setCeilingTexture] = useState<THREE.Texture | null>(null)
@@ -322,7 +577,11 @@ function FloorPlan3DModel({
     return (
       <group>
         {/* Piso base con dimensiones del plano */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[scene.bounds.width / 2, -0.01, scene.bounds.height / 2]} receiveShadow>
+        <mesh 
+          rotation={[-Math.PI / 2, 0, 0]} 
+          position={[scene.bounds.width / 2, 0, scene.bounds.height / 2]} 
+          receiveShadow
+        >
           <planeGeometry args={[scene.bounds.width * 1.2, scene.bounds.height * 1.2]} />
           {floorTexture ? (
             <meshStandardMaterial 
@@ -360,6 +619,8 @@ function FloorPlan3DModel({
         {/* ✨ Renderizar objetos con herencia de textura de pared */}
         {objects.map((obj, index) => {
           const objectTextureUrl = getTextureForElement(obj.type as ElementType)
+          const effectiveDimensions = getEffectiveDimensions(obj)
+          const isSelected = selectedObjectId === obj.id
           
           return (
             <Object3D 
@@ -367,9 +628,21 @@ function FloorPlan3DModel({
               obj={obj} 
               textureUrl={objectTextureUrl}
               wallTextureUrl={wallTextureUrl} // 🔑 Pasar textura de pared para heredar
+              effectiveDimensions={effectiveDimensions}
+              isSelected={isSelected}
+              onSelect={onObjectSelect ? () => onObjectSelect(obj) : undefined}
             />
           )
         })}
+
+        {/* 🎯 Renderizar puntos de intersección y esquinas */}
+        {showIntersections && sceneData.intersections && sceneData.intersections.length > 0 && (
+          <>
+            {sceneData.intersections.map((point) => (
+              <IntersectionMarker key={`intersection_${point.id}`} point={point} />
+            ))}
+          </>
+        )}
       </group>
     )
   }
@@ -417,19 +690,27 @@ function FloorPlan3DModel({
   return null
 }
 
-export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: FloorPlan3DViewerProps) {
+export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, showIntersections: initialShowIntersections = true }: FloorPlan3DViewerProps) {
   const [autoRotate, setAutoRotate] = useState(false)
   const [isTexturePanelOpen, setIsTexturePanelOpen] = useState(false)
   const [textureAssignments, setTextureAssignments] = useState<TextureAssignment[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [showIntersections, setShowIntersections] = useState(initialShowIntersections)
+  const [selectedObject, setSelectedObject] = useState<ThreeJSObject | null>(null)
+  const [isDimensionEditorOpen, setIsDimensionEditorOpen] = useState(false)
+
+  // Hook para manejar dimensiones modificadas
+  const dimensionEditor = useDimensionEditor(sceneData?.objects || [])
 
   // Cargar asignaciones existentes si hay modelo3dId
   useEffect(() => {
     if (modelo3dId) {
       loadExistingAssignments()
+      // Cargar dimensiones modificadas desde localStorage
+      dimensionEditor.loadFromLocalStorage(modelo3dId)
     }
-  }, [modelo3dId])
+  }, [modelo3dId, dimensionEditor])
 
   const loadExistingAssignments = async () => {
     if (!modelo3dId) return
@@ -557,8 +838,59 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
     }
   }
 
-  // Calcular posición de cámara según el tamaño de la escena
+  // Handlers para el editor de dimensiones
+  const handleObjectSelect = (obj: ThreeJSObject) => {
+    setSelectedObject(obj)
+    setIsDimensionEditorOpen(true)
+    console.log('🎯 Objeto seleccionado:', obj.id, obj.type)
+  }
+
+  const handleDimensionUpdate = (objectId: string | number, dimension: 'width' | 'height' | 'depth' | 'position', value: number, axis?: 'x' | 'y' | 'z') => {
+    if (dimension === 'position' && axis) {
+      dimensionEditor.updatePosition(objectId, axis, value)
+    } else if (dimension !== 'position') {
+      dimensionEditor.updateDimension(objectId, dimension, value)
+    }
+  }
+
+  const handleDimensionReset = (objectId: string | number) => {
+    dimensionEditor.resetObjectDimensions(objectId)
+    // Actualizar dimensiones locales después del reset
+    if (selectedObject && String(selectedObject.id) === String(objectId)) {
+      const effective = dimensionEditor.getEffectiveDimensions(selectedObject)
+      // Forzar actualización del panel
+      setTimeout(() => {
+        const updated = dimensionEditor.getEffectiveDimensions(selectedObject)
+        console.log('🔄 Dimensiones reseteadas:', updated)
+      }, 100)
+    }
+  }
+
+  const handleDimensionSave = () => {
+    if (modelo3dId) {
+      dimensionEditor.saveToLocalStorage(modelo3dId)
+      setSaveMessage({ type: 'success', text: '✓ Dimensiones guardadas exitosamente' })
+      setTimeout(() => setSaveMessage(null), 3000)
+    } else {
+      setSaveMessage({ type: 'error', text: 'No se puede guardar: falta el ID del modelo 3D' })
+      setTimeout(() => setSaveMessage(null), 3000)
+    }
+  }
+
+  const handleCloseDimensionEditor = () => {
+    setIsDimensionEditorOpen(false)
+    // No limpiar selectedObject para mantener el resaltado
+  }
+
+  // Calcular posición de cámara según el tamaño de la escena o usar datos del JSON
   const getCameraPosition = (): [number, number, number] => {
+    // Si hay datos de cámara en el JSON, usarlos
+    if (sceneData?.camera?.position) {
+      const cam = sceneData.camera.position
+      return [cam.x, cam.y, cam.z]
+    }
+    
+    // Fallback: calcular automáticamente
     if (sceneData?.scene) {
       const { width, height } = sceneData.scene.bounds
       const maxDimension = Math.max(width, height)
@@ -575,75 +907,115 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
           <PerspectiveCamera makeDefault position={getCameraPosition()} fov={50} />
           <OrbitControls
             enableDamping
-            dampingFactor={0.05}
+            dampingFactor={0.1}
             autoRotate={autoRotate}
             autoRotateSpeed={0.5}
             minDistance={5}
             maxDistance={sceneData ? 50 : 20}
             minPolarAngle={0}
             maxPolarAngle={Math.PI / 2.1}
+            enablePan={true}
+            enableZoom={true}
           />
 
-          {/* Lighting - Aumentado para mejor visibilidad de texturas */}
-          <ambientLight intensity={0.7} />
+          {/* Lighting - Optimizado para mejor rendimiento */}
+          {/* Luz ambiental */}
+          <ambientLight intensity={0.5} color="#FFF8E1" />
+          
+          {/* Luz principal del sol (direccional) - Única luz con sombras */}
           <directionalLight
-            position={[10, 10, 5]}
+            position={[15, 20, 10]}
             intensity={1.5}
             castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-            shadow-camera-left={-20}
-            shadow-camera-right={20}
-            shadow-camera-top={20}
-            shadow-camera-bottom={-20}
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
+            shadow-camera-left={-30}
+            shadow-camera-right={30}
+            shadow-camera-top={30}
+            shadow-camera-bottom={-30}
+            shadow-bias={-0.0001}
+            shadow-radius={2}
+            color="#FFF8DC"
           />
-          <directionalLight position={[-5, 5, -5]} intensity={0.6} />
-          <pointLight position={[0, 8, 0]} intensity={0.8} color="#CBDF90" />
-          <hemisphereLight args={['blue', '#444444', 0.4]} />
+          
+          {/* Luz de relleno (sin sombras para mejor rendimiento) */}
+          <directionalLight 
+            position={[-10, 8, -8]} 
+            intensity={0.4} 
+            color="#E3F2FD"
+          />
+          
+          {/* Luz hemisférica para ambiente natural */}
+          <hemisphereLight 
+            args={['#87CEEB', '#E8F5E9', 0.4]} 
+          />
 
           {/* 3D Model */}
           <FloorPlan3DModel 
             imageUrl={imageUrl} 
             sceneData={sceneData} 
             textureAssignments={textureAssignments}
+            showIntersections={showIntersections}
+            getEffectiveDimensions={dimensionEditor.getEffectiveDimensions}
+            selectedObjectId={selectedObject?.id}
+            onObjectSelect={handleObjectSelect}
           />
 
-          {/* Ground */}
+          {/* Ground - Sombras de contacto optimizadas */}
           <ContactShadows 
-            position={[sceneData ? sceneData.scene.bounds.width / 2 : 0, -0.02, sceneData ? sceneData.scene.bounds.height / 2 : 0]} 
+            position={[sceneData ? sceneData.scene.bounds.width / 2 : 0, -0.01, sceneData ? sceneData.scene.bounds.height / 2 : 0]} 
             opacity={0.3} 
             scale={sceneData ? Math.max(sceneData.scene.bounds.width, sceneData.scene.bounds.height) * 1.5 : 15} 
-            blur={2.5} 
-            far={4} 
+            blur={2} 
+            far={6}
+            resolution={256}
+            color="#000000"
           />
 
           <Grid
             position={[sceneData ? sceneData.scene.bounds.width / 2 : 0, -0.02, sceneData ? sceneData.scene.bounds.height / 2 : 0]}
-            args={[30, 30]}
-            cellSize={0.5}
-            cellThickness={0.5}
+            args={[20, 20]}
+            cellSize={1}
+            cellThickness={0.3}
             cellColor="#7F9C96"
             sectionSize={2}
-            sectionThickness={1}
+            sectionThickness={0.8}
             sectionColor="#4D7C8A"
-            fadeDistance={40}
+            fadeDistance={30}
             fadeStrength={1}
             infiniteGrid
           />
 
-          {/* Fog for depth */}
-          <fog attach="fog" args={["#f5f5f5", 20, 50]} />
+          {/* Fog mejorado para profundidad y ambiente */}
+          <fog attach="fog" args={["#E8F5E9", 25, 60]} />
         </Suspense>
       </Canvas>
 
-      {/* Controls */}
-      <div className="absolute top-4 left-4 flex flex-col gap-2">
+      {/* Controls - Mejorados visualmente */}
+      <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
         <button
           onClick={() => setAutoRotate(!autoRotate)}
-          className="px-4 py-2 bg-card/95 backdrop-blur-sm border border-border rounded-lg text-sm font-medium text-card-foreground hover:bg-card transition-colors shadow-lg"
+          className={`px-4 py-2 backdrop-blur-sm border rounded-lg text-sm font-medium transition-all shadow-lg ${
+            autoRotate 
+              ? "bg-primary/90 text-primary-foreground border-primary hover:bg-primary" 
+              : "bg-card/95 text-card-foreground border-border hover:bg-card/80"
+          }`}
         >
-          {autoRotate ? "Detener Rotación" : "Auto Rotar"}
+          {autoRotate ? "⏸ Detener Rotación" : "▶ Auto Rotar"}
         </button>
+
+        {sceneData?.intersections && sceneData.intersections.length > 0 && (
+          <button
+            onClick={() => setShowIntersections(!showIntersections)}
+            className={`px-4 py-2 backdrop-blur-sm border rounded-lg text-sm font-medium transition-all shadow-lg ${
+              showIntersections 
+                ? "bg-primary/90 text-primary-foreground border-primary hover:bg-primary" 
+                : "bg-card/95 text-card-foreground border-border hover:bg-card/80"
+            }`}
+          >
+            {showIntersections ? "🔴 Ocultar Puntos" : "⚪ Mostrar Puntos"}
+          </button>
+        )}
 
         <Button
           onClick={() => setIsTexturePanelOpen(true)}
@@ -653,6 +1025,18 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
           <Paintbrush className="w-4 h-4 mr-2" />
           Aplicar Texturas
         </Button>
+
+        {selectedObject && (
+          <Button
+            onClick={() => setIsDimensionEditorOpen(true)}
+            className="shadow-lg"
+            size="default"
+            variant="outline"
+          >
+            <Ruler className="w-4 h-4 mr-2" />
+            Editar Dimensiones
+          </Button>
+        )}
 
         {modelo3dId && textureAssignments.length > 0 && (
           <Button
@@ -696,6 +1080,22 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
               <div>🪟 Ventanas: {sceneData.objects.filter(o => o.type === 'window').length}</div>
               <div>🚪 Puertas: {sceneData.objects.filter(o => o.type === 'door').length}</div>
             </div>
+            {sceneData.intersections && sceneData.intersections.length > 0 && (
+              <div className="border-t border-border pt-2 mt-2">
+                <div className="font-semibold">Intersecciones/Esquinas:</div>
+                <div className="text-xs flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-[#FF6B35]"></span>
+                  <span>{sceneData.intersections.filter(i => i.type === 'intersection').length} intersecciones</span>
+                </div>
+                <div className="text-xs flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-[#4ECDC4]"></span>
+                  <span>{sceneData.intersections.filter(i => i.type === 'corner').length} esquinas</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Total: {sceneData.intersections.length} puntos
+                </div>
+              </div>
+            )}
             {textureAssignments.length > 0 && (
               <>
                 <div className="border-t border-border pt-2 mt-2">
@@ -715,6 +1115,19 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId }: 
         onApplyTexture={handleApplyTexture}
         currentAssignments={textureAssignments}
       />
+
+      {/* Dimension Editor Panel */}
+      {isDimensionEditorOpen && selectedObject && (
+        <DimensionEditorPanel
+          selectedObject={selectedObject}
+          onClose={handleCloseDimensionEditor}
+          onUpdate={handleDimensionUpdate}
+          onReset={handleDimensionReset}
+          onSave={handleDimensionSave}
+          getEffectiveDimensions={dimensionEditor.getEffectiveDimensions}
+          modelo3dId={modelo3dId}
+        />
+      )}
     </div>
   )
 }

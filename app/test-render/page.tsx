@@ -3,92 +3,102 @@
 import { FloorPlan3DViewer } from "@/components/floor-plan-3d-viewer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useState } from "react"
-import { ArrowLeft } from "lucide-react"
+import { useState, useMemo } from "react"
+import { ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
+import datosReales from "./datos.json"
+import datos2 from "./datos2.json"
+import { ThreeJSObject, ThreeJSScene } from "@/lib/floorplan-api"
 
-// Datos de ejemplo para pruebas
-const EJEMPLO_SCENE_DATA = {
-  scene: {
-    name: "Test Scene",
-    units: "meters",
-    bounds: {
-      width: 10,
-      height: 12
-    }
-  },
-  objects: [
-    // Paredes exteriores
-    {
-      id: "wall_1",
-      type: "wall" as const,
-      position: { x: 0, y: 1.5, z: 0 },
-      rotation: { x: 0, y: 0, z: 0 },
-      dimensions: { width: 10, height: 3, depth: 0.2 }
-    },
-    {
-      id: "wall_2",
-      type: "wall" as const,
-      position: { x: 10, y: 1.5, z: 6 },
-      rotation: { x: 0, y: Math.PI / 2, z: 0 },
-      dimensions: { width: 12, height: 3, depth: 0.2 }
-    },
-    {
-      id: "wall_3",
-      type: "wall" as const,
-      position: { x: 5, y: 1.5, z: 12 },
-      rotation: { x: 0, y: 0, z: 0 },
-      dimensions: { width: 10, height: 3, depth: 0.2 }
-    },
-    {
-      id: "wall_4",
-      type: "wall" as const,
-      position: { x: 0, y: 1.5, z: 6 },
-      rotation: { x: 0, y: Math.PI / 2, z: 0 },
-      dimensions: { width: 12, height: 3, depth: 0.2 }
-    },
-    
-    // Pared interna
-    {
-      id: "wall_5",
-      type: "wall" as const,
-      position: { x: 5, y: 1.5, z: 6 },
-      rotation: { x: 0, y: Math.PI / 2, z: 0 },
-      dimensions: { width: 6, height: 3, depth: 0.2 }
-    },
+// Función de validación de datos
+function validateSceneData(data: any): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
+  
+  if (!data.scene) {
+    errors.push("Falta el objeto 'scene'")
+  } else {
+    if (!data.scene.bounds) errors.push("Falta 'scene.bounds'")
+    if (typeof data.scene.bounds?.width !== 'number') errors.push("'scene.bounds.width' debe ser un número")
+    if (typeof data.scene.bounds?.height !== 'number') errors.push("'scene.bounds.height' debe ser un número")
+  }
+  
+  if (!Array.isArray(data.objects)) {
+    errors.push("'objects' debe ser un array")
+  } else {
+    data.objects?.forEach((obj: any, index: number) => {
+      if (!obj.id) errors.push(`Objeto ${index}: falta 'id'`)
+      if (!['wall', 'window', 'door'].includes(obj.type)) {
+        errors.push(`Objeto ${index}: tipo inválido '${obj.type}'`)
+      }
+      if (!obj.position || typeof obj.position.x !== 'number') {
+        errors.push(`Objeto ${index}: posición inválida`)
+      }
+      if (!obj.dimensions || typeof obj.dimensions.width !== 'number') {
+        errors.push(`Objeto ${index}: dimensiones inválidas`)
+      }
+    })
+  }
+  
+  return { valid: errors.length === 0, errors }
+}
 
-    // Ventanas
-    {
-      id: "window_1",
-      type: "window" as const,
-      position: { x: 7, y: 1.5, z: 0 },
-      rotation: { x: 0, y: 0, z: 0 },
-      dimensions: { width: 2, height: 3, depth: 0.2 }
-    },
-    {
-      id: "window_2",
-      type: "window" as const,
-      position: { x: 10, y: 1.5, z: 3 },
-      rotation: { x: 0, y: Math.PI / 2, z: 0 },
-      dimensions: { width: 2, height: 3, depth: 0.2 }
-    },
-
-    // Puertas
-    {
-      id: "door_1",
-      type: "door" as const,
-      position: { x: 2.5, y: 1.5, z: 6 },
-      rotation: { x: 0, y: Math.PI / 2, z: 0 },
-      dimensions: { width: 1, height: 3, depth: 0.2 }
-    },
-    {
-      id: "door_2",
-      type: "door" as const,
-      position: { x: 2, y: 1.5, z: 12 },
-      rotation: { x: 0, y: 0, z: 0 },
-      dimensions: { width: 1, height: 3, depth: 0.2 }
-    }
-  ]
+// Función para procesar datos del JSON
+function processSceneData(data: any): { 
+  scene: ThreeJSScene
+  objects: ThreeJSObject[]
+  intersections?: Array<{ id: number; x: number; y: number; z: number; type: 'intersection' | 'corner' }>
+  camera?: { position: { x: number; y: number; z: number }; target: { x: number; y: number; z: number } }
+} | null {
+  const validation = validateSceneData(data)
+  
+  if (!validation.valid) {
+    console.error("❌ Errores de validación:", validation.errors)
+    return null
+  }
+  
+  return {
+    scene: data.scene as ThreeJSScene,
+    objects: data.objects.map((obj: any) => ({
+      id: String(obj.id),
+      type: obj.type as "wall" | "window" | "door",
+      position: {
+        x: Number(obj.position.x) || 0,
+        y: Number(obj.position.y) || 0,
+        z: Number(obj.position.z) || 0
+      },
+      dimensions: {
+        width: Number(obj.dimensions.width) || 0,
+        height: Number(obj.dimensions.height) || 0,
+        depth: Number(obj.dimensions.depth) || 0
+      },
+      rotation: {
+        x: Number(obj.rotation?.x) || 0,
+        y: Number(obj.rotation?.y) || 0,
+        z: Number(obj.rotation?.z) || 0
+      }
+    })) as ThreeJSObject[],
+    // Incluir intersecciones si están disponibles
+    intersections: data.intersections ? data.intersections.map((point: any) => ({
+      id: Number(point.id) || 0,
+      x: Number(point.x) || 0,
+      y: Number(point.y) || 0,
+      z: Number(point.z) || 0,
+      type: (point.type === 'intersection' || point.type === 'corner') ? point.type : 'corner' as 'intersection' | 'corner'
+    })) : undefined,
+    // Incluir datos de cámara si están disponibles
+    camera: data.camera ? {
+      position: {
+        x: Number(data.camera.position?.x) || 0,
+        y: Number(data.camera.position?.y) || 0,
+        z: Number(data.camera.position?.z) || 0
+      },
+      target: {
+        x: Number(data.camera.target?.x) || 0,
+        y: Number(data.camera.target?.y) || 0,
+        z: Number(data.camera.target?.z) || 0
+      }
+    } : undefined
+  }
 }
 
 const TEXTURAS_EJEMPLO = [
@@ -126,6 +136,59 @@ const TEXTURAS_EJEMPLO = [
 
 export default function TestRenderPage() {
   const [selectedTexture, setSelectedTexture] = useState<number>(0)
+  const [selectedDataset, setSelectedDataset] = useState<"datos" | "datos2">("datos")
+  
+  // Seleccionar el dataset actual
+  const currentData = useMemo(() => {
+    return selectedDataset === "datos" ? datosReales : datos2
+  }, [selectedDataset])
+  
+  // Procesar y validar datos con memoización
+  const REAL_SCENE_DATA = useMemo(() => processSceneData(currentData), [currentData])
+  const validation = useMemo(() => validateSceneData(currentData), [currentData])
+  
+  // Estadísticas calculadas
+  const stats = useMemo(() => {
+    if (!REAL_SCENE_DATA) return null
+    
+    const walls = REAL_SCENE_DATA.objects.filter(o => o.type === 'wall').length
+    const windows = REAL_SCENE_DATA.objects.filter(o => o.type === 'window').length
+    const doors = REAL_SCENE_DATA.objects.filter(o => o.type === 'door').length
+    
+    return { walls, windows, doors, total: REAL_SCENE_DATA.objects.length }
+  }, [REAL_SCENE_DATA])
+
+  // Si hay errores de validación, mostrar mensaje
+  if (!validation.valid || !REAL_SCENE_DATA) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-2xl w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Error de Validación de Datos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Los datos del JSON no son válidos. Por favor, verifica el archivo.
+            </p>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Errores encontrados:</p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                {validation.errors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+            <Link href="/" className="mt-4 inline-block">
+              <Button variant="outline">Volver al inicio</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -141,7 +204,20 @@ export default function TestRenderPage() {
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Test Render 3D</h1>
-                <p className="text-sm text-muted-foreground">Prueba el visualizador con datos de ejemplo</p>
+                <p className="text-sm text-muted-foreground">
+                  Visualizador con datos reales procesados desde example1.png
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-foreground">Dataset:</label>
+                <select
+                  value={selectedDataset}
+                  onChange={(e) => setSelectedDataset(e.target.value as "datos" | "datos2")}
+                  className="px-3 py-1.5 text-sm border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="datos">Datos Complejos (example1.png)</option>
+                  <option value="datos2">Habitación Simple (4 paredes + 1 puerta)</option>
+                </select>
               </div>
             </div>
           </div>
@@ -152,29 +228,82 @@ export default function TestRenderPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Panel de información */}
           <div className="lg:col-span-1 space-y-4">
-            <Card>
+            <Card className="border-2 border-primary/20">
               <CardHeader>
-                <CardTitle>📊 Información</CardTitle>
-                <CardDescription>Datos del modelo de prueba</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">📊</span>
+                  Información del Modelo
+                </CardTitle>
+                <CardDescription>Datos reales procesados por Mask R-CNN</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">Dimensiones:</p>
-                  <p className="text-sm text-muted-foreground">10m × 12m</p>
+                  <p className="text-sm text-muted-foreground">
+                    {currentData.scene.bounds.width.toFixed(2)}m × {currentData.scene.bounds.height.toFixed(2)}m
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Objetos:</p>
                   <p className="text-sm text-muted-foreground">
-                    {EJEMPLO_SCENE_DATA.objects.length} elementos
+                    {stats?.total || REAL_SCENE_DATA.objects.length} elementos
                   </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Composición:</p>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>🧱 5 paredes</li>
-                    <li>🪟 2 ventanas</li>
-                    <li>🚪 2 puertas</li>
+                    <li>🧱 {stats?.walls || currentData.medidas_extraidas.num_paredes} paredes</li>
+                    <li>🪟 {stats?.windows || currentData.medidas_extraidas.num_ventanas} ventanas</li>
+                    <li>🚪 {stats?.doors || currentData.medidas_extraidas.num_puertas} puertas</li>
                   </ul>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <p className="text-sm font-medium text-foreground mb-2">📐 Medidas Calculadas:</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-muted/50 p-2 rounded">
+                      <p className="text-muted-foreground">Área Total</p>
+                      <p className="font-semibold text-foreground">{currentData.medidas_extraidas.area_total_m2} m²</p>
+                    </div>
+                    <div className="bg-muted/50 p-2 rounded">
+                      <p className="text-muted-foreground">Perímetro</p>
+                      <p className="font-semibold text-foreground">{currentData.medidas_extraidas.perimetro_total_m} m</p>
+                    </div>
+                    <div className="bg-muted/50 p-2 rounded">
+                      <p className="text-muted-foreground">Área Paredes</p>
+                      <p className="font-semibold text-foreground">{currentData.medidas_extraidas.area_paredes_m2} m²</p>
+                    </div>
+                    <div className="bg-muted/50 p-2 rounded">
+                      <p className="text-muted-foreground">Área Ventanas</p>
+                      <p className="font-semibold text-foreground">{currentData.medidas_extraidas.area_ventanas_m2} m²</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs font-medium text-foreground mb-2">🎯 Calidad de Detección:</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Confianza promedio:</span>
+                      <span className="text-xs font-semibold text-green-600">
+                        {(currentData.test_metadata.detection_stats.avg_confidence * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Escala:</span>
+                      <span className={`text-xs font-semibold ${
+                        currentData.medidas_extraidas.confianza_escala === "alta" 
+                          ? "text-green-600" 
+                          : "text-yellow-600"
+                      }`}>
+                        {currentData.medidas_extraidas.confianza_escala === "alta" ? "✅ Alta" : "⚠️ Estimada"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Detecciones:</span>
+                      <span className="text-xs font-semibold text-foreground">
+                        {currentData.test_metadata.detection_stats.total_detections}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -221,11 +350,27 @@ export default function TestRenderPage() {
 
             <Card className="bg-primary/5 border-primary/20">
               <CardHeader>
-                <CardTitle className="text-sm">ℹ️ Nota</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  Estado de Datos
+                </CardTitle>
               </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
-                <p>Esta es una página de prueba con datos estáticos.</p>
-                <p className="mt-2">Los cambios aquí NO se guardan en la base de datos.</p>
+              <CardContent className="text-xs text-muted-foreground space-y-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                  <span>Datos validados correctamente</span>
+                </div>
+                <p className="pt-2 border-t border-border">
+                  {selectedDataset === "datos" 
+                    ? "Datos reales procesados desde example1.png"
+                    : "Habitación simple: 4 paredes + 1 puerta"}
+                </p>
+                <p>
+                  Procesado: {new Date(currentData.test_metadata.test_timestamp).toLocaleString()}
+                </p>
+                <p className="pt-2 border-t border-border text-foreground">
+                  ⚠️ Los cambios aquí NO se guardan en la base de datos.
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -235,7 +380,7 @@ export default function TestRenderPage() {
             <Card className="h-[calc(100vh-180px)]">
               <CardContent className="p-0 h-full">
                 <FloorPlan3DViewer
-                  sceneData={EJEMPLO_SCENE_DATA}
+                  sceneData={REAL_SCENE_DATA}
                   // Sin modelo3dId para que no intente guardar/cargar de BD
                 />
               </CardContent>
