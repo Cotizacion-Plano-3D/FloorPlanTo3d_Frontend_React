@@ -2,7 +2,7 @@
 
 import { Canvas, useLoader } from "@react-three/fiber"
 import { OrbitControls, PerspectiveCamera, Grid, ContactShadows, useTexture, Text } from "@react-three/drei"
-import { Suspense, useState, useEffect } from "react"
+import { Suspense, useState, useEffect, useCallback } from "react"
 import * as THREE from "three"
 import { ThreeJSObject, ThreeJSScene } from "@/lib/floorplan-api"
 import { TexturePanel, ElementType, TextureAssignment } from "@/components/texture-panel"
@@ -302,11 +302,11 @@ function Object3D({
         const adjustedTopHeight = topWallHeight + adjustment
         const adjustedTopY = windowTopY + (adjustedTopHeight / 2)
         // Usar valores ajustados
-        return (
-          <group 
-            key={`${obj.id}_${texture?.uuid || 'no-tex'}_${wallTexture?.uuid || 'no-wall'}`} 
+    return (
+      <group 
+        key={`${obj.id}_${texture?.uuid || 'no-tex'}_${wallTexture?.uuid || 'no-wall'}`} 
             position={[position.x, 0, position.z]} 
-            rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
+        rotation={[obj.rotation.x, obj.rotation.y, obj.rotation.z]}
             onClick={onSelect ? (e) => { 
               e.stopPropagation(); 
               onSelect(); 
@@ -322,14 +322,14 @@ function Object3D({
             {/* ✅ Pared inferior - PARED COMPLETA de tipo WALL (más ancha) */}
             <mesh position={[0, bottomWallY, 0]} receiveShadow>
               <boxGeometry args={[bottomWallWidth, bottomWallHeight, bottomWallDepth]} />
-              {createMaterial('wall')}
-            </mesh>
+          {createMaterial('wall')}
+        </mesh>
 
             {/* 🪟 Ventana transparente - USA 100% DE SU ALTURA */}
             <mesh position={[0, windowCenterY, 0]} receiveShadow>
               <boxGeometry args={[dimensions.width, windowHeight, dimensions.depth]} />
               {createMaterial('object', isSelected)}
-            </mesh>
+        </mesh>
 
             {/* ✅ Pared superior (dintel) - PARED COMPLETA de tipo WALL (más ancha) */}
             <mesh position={[0, adjustedTopY, 0]} receiveShadow>
@@ -703,16 +703,8 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, sh
   // Hook para manejar dimensiones modificadas
   const dimensionEditor = useDimensionEditor(sceneData?.objects || [])
 
-  // Cargar asignaciones existentes si hay modelo3dId
-  useEffect(() => {
-    if (modelo3dId) {
-      loadExistingAssignments()
-      // Cargar dimensiones modificadas desde localStorage
-      dimensionEditor.loadFromLocalStorage(modelo3dId)
-    }
-  }, [modelo3dId, dimensionEditor])
-
-  const loadExistingAssignments = async () => {
+  // Función para cargar asignaciones existentes (memoizada para evitar re-renders)
+  const loadExistingAssignments = useCallback(async () => {
     if (!modelo3dId) return
     
     try {
@@ -764,7 +756,22 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, sh
       console.error('❌ Error cargando asignaciones de texturas:', error)
       setTextureAssignments([])
     }
-  }
+  }, [modelo3dId])
+
+  // Cargar asignaciones existentes si hay modelo3dId (solo una vez cuando cambia modelo3dId)
+  useEffect(() => {
+    if (modelo3dId) {
+      loadExistingAssignments()
+    }
+  }, [modelo3dId, loadExistingAssignments])
+
+  // Cargar dimensiones modificadas desde localStorage (independiente)
+  useEffect(() => {
+    if (modelo3dId) {
+      dimensionEditor.loadFromLocalStorage(modelo3dId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelo3dId]) // Solo dependemos de modelo3dId
 
   const handleApplyTexture = (elementType: ElementType, material: Material, elementId?: string) => {
     console.log('🎨 Aplicando textura:', { elementType, materialName: material.nombre, elementId })
@@ -866,14 +873,51 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, sh
     }
   }
 
-  const handleDimensionSave = () => {
-    if (modelo3dId) {
-      dimensionEditor.saveToLocalStorage(modelo3dId)
-      setSaveMessage({ type: 'success', text: '✓ Dimensiones guardadas exitosamente' })
+  const handleDimensionSave = async () => {
+    if (!planoId) {
+      setSaveMessage({ type: 'error', text: 'No se puede guardar: falta el ID del plano' })
       setTimeout(() => setSaveMessage(null), 3000)
-    } else {
-      setSaveMessage({ type: 'error', text: 'No se puede guardar: falta el ID del modelo 3D' })
+      return
+    }
+
+    try {
+      // Preparar objetos con dimensiones modificadas
+      const objectsToUpdate = Object.entries(dimensionEditor.modifiedDimensions).map(([objectId, dimensions]) => {
+        const update: any = { object_id: objectId }
+        
+        if (dimensions.width !== undefined) update.width = dimensions.width
+        if (dimensions.height !== undefined) update.height = dimensions.height
+        if (dimensions.depth !== undefined) update.depth = dimensions.depth
+        if (dimensions.position) {
+          update.position = {}
+          if (dimensions.position.x !== undefined) update.position.x = dimensions.position.x
+          if (dimensions.position.y !== undefined) update.position.y = dimensions.position.y
+          if (dimensions.position.z !== undefined) update.position.z = dimensions.position.z
+        }
+        
+        return update
+      })
+
+      if (objectsToUpdate.length === 0) {
+        setSaveMessage({ type: 'error', text: 'No hay cambios para guardar' })
+        setTimeout(() => setSaveMessage(null), 3000)
+        return
+      }
+
+      // Guardar en el backend
+      const response = await apiClient.updateModelo3DObjects(planoId, objectsToUpdate)
+      
+      // También guardar en localStorage como backup
+      if (modelo3dId) {
+        dimensionEditor.saveToLocalStorage(modelo3dId)
+      }
+
+      setSaveMessage({ type: 'success', text: `✓ ${response.message || 'Dimensiones guardadas exitosamente'}` })
       setTimeout(() => setSaveMessage(null), 3000)
+    } catch (error: any) {
+      console.error('❌ Error guardando dimensiones:', error)
+      setSaveMessage({ type: 'error', text: `Error al guardar: ${error.message || 'Error desconocido'}` })
+      setTimeout(() => setSaveMessage(null), 5000)
     }
   }
 

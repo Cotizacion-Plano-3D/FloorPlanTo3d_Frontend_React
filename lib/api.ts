@@ -302,6 +302,19 @@ class ApiClient {
     return this.request<any>(`/planos/${id}/render-3d`)
   }
 
+  async updateModelo3DObjects(planoId: number, objects: Array<{
+    object_id: string | number
+    width?: number
+    height?: number
+    depth?: number
+    position?: { x?: number; y?: number; z?: number }
+  }>): Promise<SuccessResponse> {
+    return this.request<SuccessResponse>(`/planos/${planoId}/modelo3d/objects`, {
+      method: 'PUT',
+      body: JSON.stringify({ objects }),
+    })
+  }
+
   // Categoria endpoints
   async getCategorias(): Promise<SuccessResponse<CategoriaResponse>> {
     return this.request<SuccessResponse<CategoriaResponse>>('/categorias/')

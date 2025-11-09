@@ -44,7 +44,8 @@ export function DimensionEditorPanel({
       const effective = getEffectiveDimensions(selectedObject)
       setLocalDimensions(effective)
     }
-  }, [selectedObject?.id, getEffectiveDimensions])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedObject?.id]) // Solo dependemos del ID del objeto para evitar loops
 
   if (!selectedObject || !localDimensions) {
     return null
