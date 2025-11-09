@@ -1,0 +1,335 @@
+{
+  "scene": {
+    "name": "FloorPlan3D_TwoRooms",
+    "units": "meters",
+    "bounds": {
+      "width": 10.0,
+      "height": 4.0
+    }
+  },
+  "objects": [
+    {
+      "id": "wall_0",
+      "type": "wall",
+      "position": {
+        "x": 3.0,
+        "y": 1.5,
+        "z": 0.0
+      },
+      "dimensions": {
+        "width": 6.0,
+        "height": 3.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    {
+      "id": "wall_1",
+      "type": "wall",
+      "position": {
+        "x": 6.0,
+        "y": 1.5,
+        "z": 1.0
+      },
+      "dimensions": {
+        "width": 2.0,
+        "height": 3.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5707963267948966,
+        "z": 0
+      }
+    },
+    {
+      "id": "wall_2",
+      "type": "wall",
+      "position": {
+        "x": 3.0,
+        "y": 1.5,
+        "z": 4.0
+      },
+      "dimensions": {
+        "width": 6.0,
+        "height": 3.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    {
+      "id": "wall_3",
+      "type": "wall",
+      "position": {
+        "x": 0.0,
+        "y": 1.5,
+        "z": 2.0
+      },
+      "dimensions": {
+        "width": 4.0,
+        "height": 3.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5707963267948966,
+        "z": 0
+      }
+    },
+    {
+      "id": "wall_4",
+      "type": "wall",
+      "position": {
+        "x": 6.0,
+        "y": 1.5,
+        "z": 3.0
+      },
+      "dimensions": {
+        "width": 2.0,
+        "height": 3.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5707963267948966,
+        "z": 0
+      }
+    },
+    {
+      "id": "window_0",
+      "type": "window",
+      "position": {
+        "x": 1.5,
+        "y": 0.7,
+        "z": 0.0
+      },
+      "dimensions": {
+        "width": 1.2,
+        "height": 1.5,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    {
+      "id": "door_1",
+      "type": "door",
+      "position": {
+        "x": 6.0,
+        "y": 1.0,
+        "z": 2.0
+      },
+      "dimensions": {
+        "width": 0.9,
+        "height": 2.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5707963267948966,
+        "z": 0
+      }
+    },
+    {
+      "id": "wall_5",
+      "type": "wall",
+      "position": {
+        "x": 8.0,
+        "y": 1.5,
+        "z": 0.0
+      },
+      "dimensions": {
+        "width": 4.0,
+        "height": 3.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    {
+      "id": "wall_6",
+      "type": "wall",
+      "position": {
+        "x": 10.0,
+        "y": 1.5,
+        "z": 2.0
+      },
+      "dimensions": {
+        "width": 4.0,
+        "height": 3.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 1.5707963267948966,
+        "z": 0
+      }
+    },
+    {
+      "id": "wall_7",
+      "type": "wall",
+      "position": {
+        "x": 8.0,
+        "y": 1.5,
+        "z": 4.0
+      },
+      "dimensions": {
+        "width": 4.0,
+        "height": 3.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    {
+      "id": "door_0",
+      "type": "door",
+      "position": {
+        "x": 9.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      "dimensions": {
+        "width": 0.9,
+        "height": 2.0,
+        "depth": 0.4
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    }
+  ],
+  "intersections": [
+    {
+      "id": 1,
+      "x": 0.0,
+      "y": 0,
+      "z": 0.0,
+      "type": "corner"
+    },
+    {
+      "id": 2,
+      "x": 6.0,
+      "y": 0,
+      "z": 0.0,
+      "type": "intersection"
+    },
+    {
+      "id": 3,
+      "x": 10.0,
+      "y": 0,
+      "z": 0.0,
+      "type": "corner"
+    },
+    {
+      "id": 4,
+      "x": 0.0,
+      "y": 0,
+      "z": 2.0,
+      "type": "corner"
+    },
+    {
+      "id": 5,
+      "x": 6.0,
+      "y": 0,
+      "z": 2.0,
+      "type": "intersection"
+    },
+    {
+      "id": 6,
+      "x": 10.0,
+      "y": 0,
+      "z": 2.0,
+      "type": "corner"
+    },
+    {
+      "id": 7,
+      "x": 0.0,
+      "y": 0,
+      "z": 4.0,
+      "type": "corner"
+    },
+    {
+      "id": 8,
+      "x": 3.0,
+      "y": 0,
+      "z": 4.0,
+      "type": "corner"
+    },
+    {
+      "id": 9,
+      "x": 8.0,
+      "y": 0,
+      "z": 4.0,
+      "type": "corner"
+    },
+    {
+      "id": 10,
+      "x": 10.0,
+      "y": 0,
+      "z": 4.0,
+      "type": "corner"
+    }
+  ],
+  "camera": {
+    "position": {
+      "x": 5.0,
+      "y": 6.0,
+      "z": 2.0
+    },
+    "target": {
+      "x": 5.0,
+      "y": 0,
+      "z": 2.0
+    }
+  },
+  "medidas_extraidas": {
+    "area_total_m2": 40.0,
+    "area_paredes_m2": 30.0,
+    "area_ventanas_m2": 1.8,
+    "perimetro_total_m": 28.0,
+    "escala_calculada": 0.025,
+    "num_puertas": 2,
+    "num_ventanas": 1,
+    "num_paredes": 8,
+    "confianza_escala": "alta"
+  },
+  "test_metadata": {
+    "image_path": "./images/example1.png",
+    "test_timestamp": "2025-01-15T12:00:00.000000",
+    "image_dimensions": {
+      "width": 600,
+      "height": 400
+    },
+    "processing_config": {
+      "format": "threejs",
+      "min_confidence": 0.5
+    },
+    "detection_stats": {
+      "total_detections": 9,
+      "avg_confidence": 0.95,
+      "min_confidence": 0.9,
+      "max_confidence": 1.0,
+      "average_door_size_pixels": 36.0
+    }
+  }
+}
