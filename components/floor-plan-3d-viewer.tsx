@@ -586,9 +586,11 @@ function FloorPlan3DModel({
           {floorTexture ? (
             <meshStandardMaterial 
               map={floorTexture} 
+              color="white"
               roughness={0.9} 
               metalness={0.1}
               side={THREE.DoubleSide}
+              transparent={true}
             />
           ) : (
             <meshStandardMaterial 
@@ -609,9 +611,11 @@ function FloorPlan3DModel({
             <planeGeometry args={[scene.bounds.width * 1.2, scene.bounds.height * 1.2]} />
             <meshStandardMaterial 
               map={ceilingTexture} 
+              color="white"
               roughness={0.8} 
               metalness={0.1}
               side={THREE.DoubleSide}
+              transparent={false}
             />
           </mesh>
         )}
