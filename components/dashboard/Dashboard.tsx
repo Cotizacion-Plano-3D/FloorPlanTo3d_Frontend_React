@@ -31,6 +31,7 @@ import {
   Palette
 } from 'lucide-react'
 import MisPlanos from '@/components/mis-planos'
+import MisCotizaciones from '@/components/mis-cotizaciones'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { PricingSection } from '@/components/pricing-section'
@@ -178,7 +179,13 @@ function NoSubscriptionDashboard() {
 }
 
 // Componente para usuarios CON suscripción activa
-function ActiveSubscriptionDashboard({ onShowMisPlanos }: { onShowMisPlanos: () => void }) {
+function ActiveSubscriptionDashboard({ 
+  onShowMisPlanos, 
+  onShowMisCotizaciones 
+}: { 
+  onShowMisPlanos: () => void
+  onShowMisCotizaciones: () => void 
+}) {
   const { user, logout } = useAuth()
   const { membresias, isLoading: membresiasLoading } = useMembresias()
   const { suscripciones, isLoading: suscripcionesLoading, fetchSuscripciones } = useSuscripciones()
@@ -381,6 +388,13 @@ function ActiveSubscriptionDashboard({ onShowMisPlanos }: { onShowMisPlanos: () 
                       <Palette className="h-6 w-6" />
                       <span>Materiales</span>
                     </Button>
+                    <Button 
+                      className="h-20 flex flex-col items-center justify-center gap-2"
+                      onClick={onShowMisCotizaciones}
+                    >
+                      <FileText className="h-6 w-6" />
+                      <span>Mis Cotizaciones</span>
+                    </Button>
                     <Button className="h-20 flex flex-col items-center justify-center gap-2">
                       <Zap className="h-6 w-6" />
                       <span>Renderizado</span>
@@ -541,6 +555,7 @@ export function Dashboard() {
   const { user, isLoading: authLoading, hasActiveSubscription, checkSubscription } = useAuth()
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
   const [showMisPlanos, setShowMisPlanos] = useState(false)
+  const [showMisCotizaciones, setShowMisCotizaciones] = useState(false)
 
   // Manejar parámetros de URL para pagos
   useEffect(() => {
@@ -612,14 +627,32 @@ export function Dashboard() {
         </div>
       )}
       
-      {hasActiveSubscription ? <ActiveSubscriptionDashboard onShowMisPlanos={() => setShowMisPlanos(true)} /> : <NoSubscriptionDashboard />}
+      {hasActiveSubscription ? (
+        <ActiveSubscriptionDashboard 
+          onShowMisPlanos={() => setShowMisPlanos(true)} 
+          onShowMisCotizaciones={() => setShowMisCotizaciones(true)}
+        />
+      ) : (
+        <NoSubscriptionDashboard />
+      )}
       
       {/* Modal para Mis Planos */}
       {showMisPlanos && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-background border border-border/40 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="p-6">
               <MisPlanos onClose={() => setShowMisPlanos(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Mis Cotizaciones */}
+      {showMisCotizaciones && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-background border border-border/40 rounded-lg max-w-7xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-6">
+              <MisCotizaciones onClose={() => setShowMisCotizaciones(false)} />
             </div>
           </div>
         </div>

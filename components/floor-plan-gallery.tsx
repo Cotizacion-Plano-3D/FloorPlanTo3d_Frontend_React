@@ -3,8 +3,9 @@
 import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Eye, Trash2, Download, Image as ImageIcon } from "lucide-react"
+import { Eye, Trash2, Download, Image as ImageIcon, FileText } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { FloorPlanPreview } from "@/components/floor-plan-preview"
 import Image from "next/image"
 import { Plano } from "@/types/api"
@@ -17,6 +18,7 @@ interface FloorPlanGalleryProps {
 }
 
 export function FloorPlanGallery({ plans, onPlanoDeleted }: FloorPlanGalleryProps) {
+  const router = useRouter()
   const [hoveredId, setHoveredId] = useState<number | null>(null)
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set())
@@ -177,6 +179,7 @@ export function FloorPlanGallery({ plans, onPlanoDeleted }: FloorPlanGalleryProp
               hoveredId === plan.id && active3DPreview === plan.id ? (
                 <FloorPlanPreview 
                   imageUrl={`${process.env.NEXT_PUBLIC_API_URL}/planos/${plan.id}/image`}
+                  planoId={plan.id}
                   modelo3dData={modelo3dCache.get(plan.id)}
                 />
               ) : (
@@ -292,36 +295,48 @@ export function FloorPlanGallery({ plans, onPlanoDeleted }: FloorPlanGalleryProp
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Link href={`/viewer/plano/${plan.id}`} className="flex-1">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Link href={`/viewer/plano/${plan.id}`} className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full bg-transparent"
+                    disabled={plan.estado !== 'completado'}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Visualizar
+                  </Button>
+                </Link>
                 <Button 
                   variant="outline" 
-                  size="sm" 
-                  className="w-full bg-transparent"
-                  disabled={plan.estado !== 'completado'}
+                  size="icon"
+                  onClick={() => handleDownload(plan)}
+                  disabled={!plan.url}
+                  title="Descargar plano"
                 >
-                  <Eye className="w-4 h-4 mr-2" />
-                  Visualizar
+                  <Download className="w-4 h-4" />
                 </Button>
-              </Link>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => handleDownload(plan)}
-                disabled={!plan.url}
-                title="Descargar plano"
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="text-destructive hover:text-destructive bg-transparent"
+                  onClick={() => handleDelete(plan)}
+                  disabled={deletingIds.has(plan.id)}
+                  title="Eliminar plano"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => router.push(`/quotation/${plan.id}`)}
+                disabled={plan.estado !== 'completado'}
               >
-                <Download className="w-4 h-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="text-destructive hover:text-destructive bg-transparent"
-                onClick={() => handleDelete(plan)}
-                disabled={deletingIds.has(plan.id)}
-                title="Eliminar plano"
-              >
-                <Trash2 className="w-4 h-4" />
+                <FileText className="w-4 h-4 mr-2" />
+                Cotización
               </Button>
             </div>
           </div>

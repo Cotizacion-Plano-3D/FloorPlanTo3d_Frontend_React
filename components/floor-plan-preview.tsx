@@ -4,6 +4,9 @@ import { Canvas } from "@react-three/fiber"
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei"
 import { Suspense } from "react"
 import * as THREE from "three"
+import { Button } from "@/components/ui/button"
+import { FileText } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface ThreeJSObject {
   id: string
@@ -15,6 +18,7 @@ interface ThreeJSObject {
 
 interface FloorPlanPreviewProps {
   imageUrl: string
+  planoId?: number
   modelo3dData?: {
     scene?: {
       bounds: { width: number; height: number }
@@ -88,7 +92,8 @@ function FloorPlanMesh({ imageUrl }: { imageUrl: string }) {
   )
 }
 
-export function FloorPlanPreview({ imageUrl, modelo3dData }: FloorPlanPreviewProps) {
+export function FloorPlanPreview({ imageUrl, planoId, modelo3dData }: FloorPlanPreviewProps) {
+  const router = useRouter()
   // Si hay datos del modelo 3D, usarlos
   const hasModel3D = modelo3dData?.objects && modelo3dData.objects.length > 0
 
@@ -114,7 +119,22 @@ export function FloorPlanPreview({ imageUrl, modelo3dData }: FloorPlanPreviewPro
   const centerPosition = getCenterPosition()
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
+      {planoId && (
+        <div className="absolute top-2 right-2 z-10">
+          {/* <Button
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white shadow-lg"
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push(`/quotation/${planoId}`)
+            }}
+          >
+            <FileText className="w-3 h-3 mr-1" />
+            Cotizar
+          </Button> */}
+        </div>
+      )}
       <Canvas>
         <Suspense fallback={null}>
           <PerspectiveCamera makeDefault position={getCameraPosition()} />

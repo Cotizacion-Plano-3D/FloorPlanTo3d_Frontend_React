@@ -9,7 +9,8 @@ import { TexturePanel, ElementType, TextureAssignment } from "@/components/textu
 import { Material, MaterialModelo3DCreate } from "@/types/api"
 import { apiClient } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Paintbrush, Save, AlertCircle, Ruler } from "lucide-react"
+import { Paintbrush, Save, AlertCircle, Ruler, FileText } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { DimensionEditorPanel } from "@/components/dimension-editor/DimensionEditorPanel"
 import { useDimensionEditor } from "@/components/dimension-editor/useDimensionEditor"
 
@@ -35,6 +36,7 @@ interface FloorPlan3DViewerProps {
   modelo3dId?: number
   planoId?: number
   showIntersections?: boolean
+  disableDimensionEditing?: boolean // Nueva prop para deshabilitar edición de dimensiones
 }
 
 // Hook personalizado para cargar texturas con fallback
@@ -502,7 +504,8 @@ function FloorPlan3DModel({
   showIntersections = true,
   getEffectiveDimensions,
   selectedObjectId,
-  onObjectSelect
+  onObjectSelect,
+  disableDimensionEditing = false
 }: { 
   imageUrl?: string
   sceneData?: { scene: ThreeJSScene; objects: ThreeJSObject[]; intersections?: IntersectionPoint[] }
@@ -516,6 +519,7 @@ function FloorPlan3DModel({
   }
   selectedObjectId?: string | number | null
   onObjectSelect?: (obj: ThreeJSObject) => void
+  disableDimensionEditing?: boolean
 }) {
   const [floorTexture, setFloorTexture] = useState<THREE.Texture | null>(null)
   const [ceilingTexture, setCeilingTexture] = useState<THREE.Texture | null>(null)
@@ -586,9 +590,11 @@ function FloorPlan3DModel({
           {floorTexture ? (
             <meshStandardMaterial 
               map={floorTexture} 
+              color="white"
               roughness={0.9} 
               metalness={0.1}
               side={THREE.DoubleSide}
+              transparent={true}
             />
           ) : (
             <meshStandardMaterial 
@@ -609,9 +615,11 @@ function FloorPlan3DModel({
             <planeGeometry args={[scene.bounds.width * 1.2, scene.bounds.height * 1.2]} />
             <meshStandardMaterial 
               map={ceilingTexture} 
+              color="white"
               roughness={0.8} 
               metalness={0.1}
               side={THREE.DoubleSide}
+              transparent={false}
             />
           </mesh>
         )}
@@ -630,7 +638,7 @@ function FloorPlan3DModel({
               wallTextureUrl={wallTextureUrl} // 🔑 Pasar textura de pared para heredar
               effectiveDimensions={effectiveDimensions}
               isSelected={isSelected}
-              onSelect={onObjectSelect ? () => onObjectSelect(obj) : undefined}
+              onSelect={onObjectSelect && !disableDimensionEditing ? () => onObjectSelect(obj) : undefined}
             />
           )
         })}
@@ -690,7 +698,8 @@ function FloorPlan3DModel({
   return null
 }
 
-export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, showIntersections: initialShowIntersections = true }: FloorPlan3DViewerProps) {
+export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, showIntersections: initialShowIntersections = true, disableDimensionEditing = false }: FloorPlan3DViewerProps) {
+  const router = useRouter()
   const [autoRotate, setAutoRotate] = useState(false)
   const [isTexturePanelOpen, setIsTexturePanelOpen] = useState(false)
   const [textureAssignments, setTextureAssignments] = useState<TextureAssignment[]>([])
@@ -847,6 +856,9 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, sh
 
   // Handlers para el editor de dimensiones
   const handleObjectSelect = (obj: ThreeJSObject) => {
+    if (disableDimensionEditing) {
+      return // No hacer nada si la edición está deshabilitada
+    }
     setSelectedObject(obj)
     setIsDimensionEditorOpen(true)
     console.log('🎯 Objeto seleccionado:', obj.id, obj.type)
@@ -1003,6 +1015,7 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, sh
             getEffectiveDimensions={dimensionEditor.getEffectiveDimensions}
             selectedObjectId={selectedObject?.id}
             onObjectSelect={handleObjectSelect}
+            disableDimensionEditing={disableDimensionEditing}
           />
 
           {/* Ground - Sombras de contacto optimizadas */}
@@ -1070,7 +1083,7 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, sh
           Aplicar Texturas
         </Button>
 
-        {selectedObject && (
+        {selectedObject && !disableDimensionEditing && (
           <Button
             onClick={() => setIsDimensionEditorOpen(true)}
             className="shadow-lg"
@@ -1100,6 +1113,17 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, sh
                 Guardar Texturas
               </>
             )}
+          </Button>
+        )}
+
+        {planoId && (
+          <Button
+            onClick={() => router.push(`/quotation/${planoId}`)}
+            className="shadow-lg bg-green-600 hover:bg-green-700 text-white"
+            size="default"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Crear Cotización
           </Button>
         )}
       </div>
@@ -1161,7 +1185,7 @@ export function FloorPlan3DViewer({ imageUrl, sceneData, modelo3dId, planoId, sh
       />
 
       {/* Dimension Editor Panel */}
-      {isDimensionEditorOpen && selectedObject && (
+      {isDimensionEditorOpen && selectedObject && !disableDimensionEditing && (
         <DimensionEditorPanel
           selectedObject={selectedObject}
           onClose={handleCloseDimensionEditor}
