@@ -15,7 +15,8 @@ import {
   Loader2,
   AlertCircle,
   Image as ImageIcon,
-  Bug
+  Bug,
+  FileText
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -86,6 +87,10 @@ export default function MisPlanos({ onClose }: MisPlanosProps) {
 
   const handleVer = (planoId: number) => {
     router.push(`/viewer/plano/${planoId}`)
+  }
+
+  const handleCotizacion = (planoId: number) => {
+    router.push(`/quotation/${planoId}`)
   }
 
   const handleImageError = (planoId: number) => {
@@ -273,7 +278,7 @@ export default function MisPlanos({ onClose }: MisPlanosProps) {
                 {formatDate(plano.fecha_subida)}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   size="sm"
                   variant="outline"
@@ -282,6 +287,17 @@ export default function MisPlanos({ onClose }: MisPlanosProps) {
                 >
                   <Eye className="h-4 w-4 mr-1" />
                   Ver
+                </Button>
+                
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => handleCotizacion(plano.id)}
+                  disabled={plano.estado !== 'completado'}
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Cotización
                 </Button>
                 
                 {plano.estado === 'subido' && (
@@ -338,6 +354,7 @@ export default function MisPlanos({ onClose }: MisPlanosProps) {
                     <Trash2 className="h-4 w-4" />
                   )}
                 </Button>
+                
               </div>
             </CardContent>
           </Card>

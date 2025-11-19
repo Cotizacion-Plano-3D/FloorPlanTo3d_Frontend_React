@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "echo 'Using .npmrc configuration'",
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
@@ -50,12 +51,13 @@
     "framer-motion": "latest",
     "geist": "^1.3.1",
     "input-otp": "1.4.1",
+    "jspdf": "^3.0.4",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
     "next-themes": "^0.4.4",
-    "react": "18.2.0",
+    "react": "^19.0.0",
     "react-day-picker": "9.8.0",
-    "react-dom": "18.2.0",
+    "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
@@ -64,6 +66,7 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "latest",
     "vaul": "^0.9.6",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {

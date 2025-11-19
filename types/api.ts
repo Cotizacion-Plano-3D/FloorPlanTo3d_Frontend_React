@@ -237,3 +237,41 @@ export interface MaterialModelo3DResponse {
   costo_total: number
   materiales: MaterialModelo3D[]
 }
+
+// Cotización types
+export interface MaterialCotizacion {
+  material_id: number
+  nombre: string
+  categoria: string
+  cantidad: number
+  precio_unitario: number
+  subtotal: number
+}
+
+export interface CotizacionCreate {
+  plano_id: number
+  cliente_nombre: string
+  cliente_email: string
+  cliente_telefono?: string
+  descripcion?: string
+  materiales: MaterialCotizacion[]
+  subtotal: number
+  iva: number
+  total: number
+}
+
+export interface Cotizacion {
+  id: number
+  plano_id: number
+  usuario_id: number
+  cliente_nombre: string
+  cliente_email: string
+  cliente_telefono?: string
+  descripcion?: string
+  materiales: MaterialCotizacion[]
+  subtotal: number
+  iva: number
+  total: number
+  fecha_creacion: string
+  fecha_actualizacion: string
+}

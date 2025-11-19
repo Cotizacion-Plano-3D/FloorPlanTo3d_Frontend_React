@@ -25,6 +25,8 @@ import {
   MaterialModelo3DCreate,
   MaterialModelo3DUpdate,
   MaterialModelo3DResponse,
+  Cotizacion,
+  CotizacionCreate,
   SuccessResponse,
   ApiError 
 } from '@/types/api'
@@ -409,6 +411,32 @@ class ApiClient {
 
   async deleteMaterialModelo3D(id: number): Promise<{ message: string }> {
     return this.request<{ message: string }>(`/materiales-modelo3d/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // Cotización endpoints
+  async createCotizacion(cotizacionData: CotizacionCreate): Promise<Cotizacion> {
+    return this.request<Cotizacion>('/cotizaciones/', {
+      method: 'POST',
+      body: JSON.stringify(cotizacionData),
+    })
+  }
+
+  async getCotizacion(cotizacionId: number): Promise<Cotizacion> {
+    return this.request<Cotizacion>(`/cotizaciones/${cotizacionId}`)
+  }
+
+  async getCotizacionesByPlano(planoId: number): Promise<Cotizacion[]> {
+    return this.request<Cotizacion[]>(`/cotizaciones/plano/${planoId}`)
+  }
+
+  async getCotizacionesUsuario(skip: number = 0, limit: number = 100): Promise<Cotizacion[]> {
+    return this.request<Cotizacion[]>(`/cotizaciones/?skip=${skip}&limit=${limit}`)
+  }
+
+  async deleteCotizacion(cotizacionId: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/cotizaciones/${cotizacionId}`, {
       method: 'DELETE',
     })
   }
